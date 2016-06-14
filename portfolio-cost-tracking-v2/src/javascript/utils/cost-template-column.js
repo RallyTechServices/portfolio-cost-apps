@@ -15,7 +15,6 @@ Ext.define('CArABU.technicalservices.CostTemplateColumn', {
             costField: me.costField,
 
             getCost: function(values){
-                console.log('getCost', values);
                 if (values[this.costField] === null){
                     return CArABU.technicalservices.PortfolioItemCostTrackingSettings.notAvailableText;
                 } else {
@@ -45,3 +44,26 @@ Ext.define('CArABU.technicalservices.CostTemplateColumn', {
         return this.tpl.apply(data);
     }
 });
+    Ext.define('Ext.ActualCostTemplate',{
+        extend: 'Ext.CostTemplate',
+        alias: ['widget.actualcosttemplatecolumn'],
+        costField: '_rollupDataActualCost'
+    });
+
+    Ext.define('Ext.TotalCostTemplate',{
+        extend: 'Ext.CostTemplate',
+        alias: ['widget.totalcosttemplatecolumn'],
+        costField: '_rollupDataTotalCost'
+    });
+
+    Ext.define('Ext.RemainingCostTemplate',{
+        extend: 'Ext.CostTemplate',
+        alias: ['widget.remainingcosttemplatecolumn'],
+        costField: '_rollupDataRemainingCost'
+    });
+
+    Ext.define('Ext.PreliminaryBudgetTemplate',{
+        extend: 'Ext.CostTemplate',
+        alias: ['widget.preliminarybudgettemplatecolumn'],
+        costField: '_rollupDataPreliminaryBudget'
+    });

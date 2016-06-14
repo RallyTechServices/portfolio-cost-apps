@@ -13,7 +13,7 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
     currencyEnd: false,
 
     normalizedCostPerUnit: 1,
-    projectCostPerUnit: {},
+
 
     preliminaryBudgetField: 'PreliminaryEstimate',
     /**
@@ -30,8 +30,8 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             key: 'points',
             label: 'Based on Story Points',
             displayName: 'Story Points',
-            defaultColumns: ['Name', 'Project', 'PlanEstimate', 'LeafStoryPlanEstimateTotal','AcceptedLeafStoryPlanEstimateTotal'],
-            requiredStoryFetch: ['ScheduleState','PortfolioItem','PlanEstimate'],
+            defaultColumns: ['Name', 'Project', 'PlanEstimate', 'LeafStoryPlanEstimateTotal','AcceptedLeafStoryPlanEstimateTotal','AcceptedDate'],
+            requiredStoryFetch: ['ScheduleState','PortfolioItem','PlanEstimate','AcceptedDate'],
             requiredTaskFetch: [],
             tooltips: {
                 _rollupDataActualCost: 'Actual Cost is the sum of the Accepted Story Plan Estimates <i>for all stories in scope</i> * Cost Per Unit for the project that the top level story resides in.',
@@ -54,7 +54,7 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             displayName: 'Task Actuals',
             label: 'Based on Task Actuals',
             defaultColumns: ['Name','Project'],
-            requiredStoryFetch: ['ScheduleState','PortfolioItem','TaskEstimateTotal','TaskActualTotal','TaskRemainingTotal'],
+            requiredStoryFetch: ['ScheduleState','PortfolioItem','TaskEstimateTotal','TaskActualTotal','TaskRemainingTotal','AcceptedDate'],
             requiredTaskFetch: ['ToDo','Actuals'],
             tooltips: {
                 _rollupDataActualCost: 'Actual Cost is the sum of the Task Actuals <i>for all stories in scope</i> * Cost Per Unit for the project that the top level story resides in.',
@@ -115,6 +115,59 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
         return settings.tooltips[field] || null;
 
     },
+    /**
+     * setProjectCostHistory
+     * @param projectCostHistoryRecords
+     */
+    projectCostPerUnit: {},
+    projectCostDate: undefined,
+
+    setProjectCostHistory: function(projectCostHistoryRecords){
+
+        var hash = {};
+        Ext.Array.each(projectCostHistoryRecords, function(r){
+            var projectRef = r.get('Project') && r.get('Project')._ref;
+            if (projectRef){
+                if (!hash[projectRef]){
+                    hash[projectRef] = [];
+                }
+                hash[projectRef].push(r.getData());
+            }
+        });
+
+        CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit = hash;
+        console.log('setProjectCostHistory',CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit)
+    },
+    getCostPerUnit: function(project_ref, asOfDate){
+
+        var projectCostHistory = CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit[project_ref];
+        if (!projectCostHistory || projectCostHistory.length === 0){
+            return CArABU.technicalservices.PortfolioItemCostTrackingSettings.normalizedCostPerUnit;
+        }
+
+        asOfDate = asOfDate || new Date();
+        projectCostHistory = _.sortBy(projectCostHistory, function(obj){ return projectCostHistory.__asOfDate; });
+
+        var cost = projectCostHistory[projectCostHistory.length-1];
+        Ext.Array.each(projectCostHistory, function(obj){
+            if (Rally.util.DateTime.getDifference(asOfDate, obj.__asOfDate,'day') >= 0){
+                cost = obj.__cost;
+                return false;
+            }
+        },this,true);
+        return cost;
+
+    },
+
+    isProjectUsingNormalizedCost: function(project_ref){
+        if (CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit[project_ref]){
+            return false;
+        }
+        return true;
+    },
+    /**
+     * END Project Cost History updates...
+     */
     setCalculationType: function(type){
         //Check that actuals is on, and warn user if it is not.
         if (type === 'taskHours'){
@@ -192,22 +245,7 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.currencyPrecision,
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.currencyEnd);
     },
-    getCostPerUnit: function(project_ref, asOfDate){
 
-        if (!asOfDate){
-            asOfDate = Date.now();
-        }
-        //ToDo, get the cost per unit during the asOf date...
-
-        return CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit[project_ref] || CArABU.technicalservices.PortfolioItemCostTrackingSettings.normalizedCostPerUnit;
-    },
-
-    isProjectUsingNormalizedCost: function(project_ref){
-        if (CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit[project_ref]){
-            return false;
-        }
-        return true;
-    },
     /**
      * This function returns all the fields that we want to return for the tree. It is built depending on the settings for cost calculations so
      * that we know to include all necessary fields.
@@ -242,7 +280,6 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
         return Ext.Array.merge(CArABU.technicalservices.PortfolioItemCostTrackingSettings.requiredFetch,
             CArABU.technicalservices.PortfolioItemCostTrackingSettings._getPreliminaryBudgetFields(),
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.requiredPortfolioItemFetch);
-
     },
     _getPreliminaryBudgetFields: function(){
         var preliminaryBudgetFields = [CArABU.technicalservices.PortfolioItemCostTrackingSettings.preliminaryBudgetField];
@@ -253,8 +290,7 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
     },
     getFields: function(config) {
 
-        var current_calculation_type = (config && config.selectedCalculationType) || 'points',
-            current_project_costs = (config && config.projectCostPerUnit) || {};
+        var current_calculation_type = (config && config.selectedCalculationType) || 'points';
 
         var currency_store = Ext.create('Rally.data.custom.Store', {
             data: CArABU.technicalservices.PortfolioItemCostTrackingSettings.currencyData
@@ -304,14 +340,6 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             width: 200,
             value: config.normalizedCostPerUnit,
             margin: '25 0 0 0'
-        },{
-            xtype: 'costperprojectsettings',
-            name: 'projectCostPerUnit',
-            fieldLabel: 'Optionally define costs per unit for individual teams (exceptions to the normalized cost)',
-            labelAlign: 'top',
-            margin: '25 0 0 0',
-            value: current_project_costs,
-            readyEvent: 'ready'
         }];
     }
 });

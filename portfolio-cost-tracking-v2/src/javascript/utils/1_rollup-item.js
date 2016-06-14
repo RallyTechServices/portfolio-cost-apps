@@ -11,6 +11,7 @@
     _notEstimated: true,
     children: undefined,
 
+    projectCostDate: undefined,
     projectCosts: undefined,
     useBudgetCalc: false,
 

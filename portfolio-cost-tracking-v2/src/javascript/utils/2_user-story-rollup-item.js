@@ -11,7 +11,7 @@ Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
             this.__totalUnits = totalFn(data);
             this.__actualUnits = actualFn(data);
             this._notEstimated = false;
-            var costPerUnit = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref);
+            var costPerUnit = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref, data.AcceptedDate);
 
             this._rollupDataTotalCost = (this.__totalUnits * costPerUnit) || 0;
             this._rollupDataActualCost = (this.__actualUnits * costPerUnit) || 0;
