@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Portfolio Cost Tracking (v2)</title>
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Mon Jun 13 2016 12:36:21 GMT-0600 (MDT)";
+    </script>
+    
+    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.1/sdk-debug.js?apiKey=_PUT_APIKEY_HERE_"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+            Rally.loadScripts(["src/javascript/utils/1_rollup-item.js","src/javascript/utils/2_rollup-item-lowest-level.js","src/javascript/utils/2_upper-level-rollup-item.js","src/javascript/utils/2_user-story-rollup-item.js","src/javascript/utils/__ts-info-link.js","src/javascript/utils/__ts-logger.js","src/javascript/utils/cost-per-project-settings.js","src/javascript/utils/cost-template-column.js","src/javascript/utils/exporter.js","src/javascript/utils/number-field-combo-box.js","src/javascript/utils/overrides.js","src/javascript/utils/parallel-throttle.js","src/javascript/utils/plugin-treegrid-container-customfilter.js","src/javascript/utils/plugin-treegrid-container-fieldpicker.js","src/javascript/utils/project-picker.js","src/javascript/utils/rollup-calculator.js","src/javascript/utils/rollup-data-loader.js","src/javascript/utils/settings.js","src/javascript/app.js"],
+	            function() {
+	                Rally.launchApp('portfolio-cost-tracking-v2', {
+	                    name: 'Portfolio Cost Tracking (v2)'
+	                })
+	            }, true);
+        });
+    </script>
+<link rel="stylesheet" type="text/css" href="src/style/app.css">
+
+</head>
+<body></body>
+</html>

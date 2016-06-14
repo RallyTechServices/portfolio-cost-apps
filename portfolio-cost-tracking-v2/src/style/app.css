@@ -1,0 +1,39 @@
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.lbl {
+
+    text-transform: uppercase;
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 10px;
+}
+
+.x-form-trigger-wrap {
+    margin-top: 0px!important;
+}
+
+.x-column-header-text {
+    margin-right: 0px!important;
+}
+.x-box-inner {
+    overflow: visible;
+}
+
+p {
+    color:#FAD200;
+}
