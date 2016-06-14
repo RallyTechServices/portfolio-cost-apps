@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Team Cost Admin App</title>
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Tue Jun 14 2016 12:36:48 GMT-0600 (MDT)";
+    </script>
+    
+    <script type="text/javascript" src="https://rally1.rallydev.com//apps/2.1/sdk-debug.js?apiKey=_PUT_APIKEY_HERE_"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+            Rally.loadScripts(["./../common/src/javascript/__ts-info-link.js","./../common/src/javascript/__ts-logger.js","./../common/src/javascript/exporter.js","./../common/src/javascript/project-cost-model.js","src/javascript/utils/preference-store.js","src/javascript/app.js"],
+	            function() {
+	                Rally.launchApp('team-cost-admin', {
+	                    name: 'Team Cost Admin App'
+	                })
+	            }, true);
+        });
+    </script>
+<link rel="stylesheet" type="text/css" href="src/style/app.css">
+
+</head>
+<body></body>
+</html>

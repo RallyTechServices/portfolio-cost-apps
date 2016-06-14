@@ -1,0 +1,24 @@
+{
+    "name": "Portfolio Cost Tracking (v2)",
+    "sdk": "2.1",
+    "className": "portfolio-cost-tracking-v2",
+    "javascript": [
+        "./utils/cost-per-project-settings.js",
+        "./utils/cost-template-column.js",
+        "./utils/exporter.js",
+        "./utils/rollup-item.js",
+        "./utils/number-field-combo-box.js",
+        "app.js",
+        "/utils/settings.js",
+        "/utils/project-picker.js",
+        "./utils/rollup-item-lowest-level.js",
+        "/utils/user-story-rollup-item.js",
+        "/utils/upper-level-rollup-item.js",
+        "/utils/rollup-calculator.js",
+        "/utils/rollup-data-loader.js",
+        "/utils/overrides.js"
+    ],
+    "css": [
+        "../style/app.css"
+    ]
+}
