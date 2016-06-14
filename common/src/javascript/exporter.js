@@ -238,6 +238,67 @@ Ext.define('CArABU.technicalservices.Exporter',{
             }
         });
         return deferred;
+    },
+    getCSVFromGrid:function(grid){
+
+        var store = grid.getStore();
+
+        var columns = grid.columns;
+        var column_names = [];
+        var headers = [];
+
+        var csv = [];
+        console.log('getCSVFromGrid', columns);
+        Ext.Array.each(columns,function(column){
+            if (column.xtype != 'rallyrowactioncolumn' && (column.dataIndex)) {
+                column_names.push(column.dataIndex);
+                headers.push(column.csvText || column.text || column.dataIndex);
+            }
+        });
+
+        csv.push('"' + headers.join('","') + '"');
+
+        var mock_meta_data = {
+            align: "right",
+            classes: [],
+            cellIndex: 9,
+            column: null,
+            columnIndex: 9,
+            innerCls: undefined,
+            recordIndex: 5,
+            rowIndex: 5,
+            style: "",
+            tdAttr: "",
+            tdCls: "x-grid-cell x-grid-td x-grid-cell-headerId-gridcolumn-1029 x-grid-cell-last x-unselectable",
+            unselectableAttr: "unselectable='on'"
+        }
+
+
+        Ext.Array.each(store.getRange(), function(record){
+            var node_values = [];
+            Ext.Array.each(columns,function(column){
+                if (column.xtype != 'rallyrowactioncolumn') {
+                    if (column.dataIndex) {
+                        var column_name = column.dataIndex;
+                        var display_value = record.get(column_name);
+
+                        if (!column._csvIgnoreRender && column.renderer) {
+                            if (column.exportRenderer) {
+                                display_value = column.exportRenderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                            } else {
+                                display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                            }
+                        }
+                        var val = display_value.replace(/\"/g,'\"\"');
+                        val = Ext.String.format("\"{0}\"",val);
+                        node_values.push(val);
+                    }
+                }
+            },this);
+            csv.push(node_values.join(','));
+        });
+        return csv.join("\r\n");
     }
+
 });
 

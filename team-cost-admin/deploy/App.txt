@@ -3,12 +3,12 @@
 <head>
     <title>Team Cost Admin App</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jun 14 2016 12:36:48 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Jun 14 2016 12:54:47 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jun 14 2016 12:36:48 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Tue Jun 14 2016 12:54:47 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 15759542938;
+        var CHECKSUM = 14690546852;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -443,7 +443,68 @@ Ext.define('CArABU.technicalservices.Exporter',{
             }
         });
         return deferred;
+    },
+    getCSVFromGrid:function(grid){
+
+        var store = grid.getStore();
+
+        var columns = grid.columns;
+        var column_names = [];
+        var headers = [];
+
+        var csv = [];
+        console.log('getCSVFromGrid', columns);
+        Ext.Array.each(columns,function(column){
+            if (column.xtype != 'rallyrowactioncolumn' && (column.dataIndex)) {
+                column_names.push(column.dataIndex);
+                headers.push(column.csvText || column.text || column.dataIndex);
+            }
+        });
+
+        csv.push('"' + headers.join('","') + '"');
+
+        var mock_meta_data = {
+            align: "right",
+            classes: [],
+            cellIndex: 9,
+            column: null,
+            columnIndex: 9,
+            innerCls: undefined,
+            recordIndex: 5,
+            rowIndex: 5,
+            style: "",
+            tdAttr: "",
+            tdCls: "x-grid-cell x-grid-td x-grid-cell-headerId-gridcolumn-1029 x-grid-cell-last x-unselectable",
+            unselectableAttr: "unselectable='on'"
+        }
+
+
+        Ext.Array.each(store.getRange(), function(record){
+            var node_values = [];
+            Ext.Array.each(columns,function(column){
+                if (column.xtype != 'rallyrowactioncolumn') {
+                    if (column.dataIndex) {
+                        var column_name = column.dataIndex;
+                        var display_value = record.get(column_name);
+
+                        if (!column._csvIgnoreRender && column.renderer) {
+                            if (column.exportRenderer) {
+                                display_value = column.exportRenderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                            } else {
+                                display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                            }
+                        }
+                        var val = display_value.replace(/\"/g,'\"\"');
+                        val = Ext.String.format("\"{0}\"",val);
+                        node_values.push(val);
+                    }
+                }
+            },this);
+            csv.push(node_values.join(','));
+        });
+        return csv.join("\r\n");
     }
+
 });
 
 
@@ -513,108 +574,6 @@ Ext.define('CArABU.technicalservices.ModelBuilder',{
         });
         return deferred;
     }
-});
-Ext.define('CArABU.technicalservices.CostStore',{
-
-    logger: new Rally.technicalservices.Logger(),
-
-    PREF_NAME: 'portfolio-team-cost',
-
-    mixins: {
-        observable: 'Ext.util.Observable'
-    },
-
-    constructor: function(config){
-        this.preferenceName = config.preferenceName || this.PREF_NAME;
-        this.context = config.context;
-
-        this.mixins.observable.constructor.call(this, config);
-
-        this._loadPreferences();
-    },
-    _loadPreferences: function(){
-        var workspaceRef = this.context.getWorkspace()._ref;
-        this.records = null;
-
-        Ext.create('Rally.data.wsapi.Store',{
-            model: 'Preference',
-            fetch: ['Name','Project','Type','Value','CreationDate','ObjectID','User'],
-            filters: [{
-                property: 'Type',
-                value: this.preferenceName
-            },{
-                property: 'Workspace',
-                value: workspaceRef
-            }],
-            context: {
-                workspace: workspaceRef,
-                project: null
-            },
-            limit: 'Infinity'
-        }).load({
-            callback: function(records,operation,success){
-                if (success){
-                    this._processCostRecords(records);
-                    this.fireEvent('ready', this);
-                } else {
-                    var msg = "Error fetching preferences: " + operation && operation.error && operation.error.errors.join(',');
-                    this.fireEvent('onerror', msg);
-                }
-            },
-            scope: this
-        });
-    },
-    _processCostRecords: function(records){
-        var costByProjectHash = {};
-        Ext.Array.each(records, function(r){
-            var projectRef = r.get('Project') && r.get('Project')._ref;
-            if (!costByProjectHash[projectRef]){
-                costByProjectHash[projectRef] = this._processCostPreferenceRecord(r);
-            }
-        }, this);
-        this.costByProjectHash = costByProjectHash;
-    },
-    _processCostPreferenceRecord: function(r){
-        //{
-        //    asOfDate: "2016-01-02",
-        //    cost: 100,
-        //    editUser: "/user/12345",
-        //    projectName: "MyProjectName",
-        //    userName: "My Name"
-        //}
-        var json = Ext.JSON.decode(r.get('Value'));
-        var sortedData = _.sortBy(json, function(obj){
-            return Rally.util.DateTime.fromIsoString(obj.asOfDate);
-        });
-        return sortedData;
-
-    },
-    getData: function(){
-        var data = [];
-        Ext.Object.each(this.costByProjectHash, function(entries, project){
-             Ext.Array.each(entries, function(e){
-                 var model = Ext.create('CArABU.technicalservices.ProjectCostModel');
-                 model.initializeFromPreferenceObj(project,e);
-                 data.push(model);
-             });
-        });
-        return data;
-    },
-    getCostPerProject: function(projectRef, asOfDate, defaultCost){
-        var projectCosts = this.costByProjectHash[projectRef] || [],
-            cost = defaultCost;
-
-        Ext.Array.each(projectCosts, function(pc){
-            var modelDate = pc.get('asOfDate');
-            if (Rally.util.DateTime.getDifference(asOfDate, modelDate, 'hour') >= 0 ){
-                cost =  pc.get('cost');
-                return false;
-            }
-        },this,true);
-
-        return cost;
-    }
-
 });
 Ext.define("team-cost-admin", {
     extend: 'Rally.app.App',
@@ -765,6 +724,13 @@ Ext.define("team-cost-admin", {
     },
     _export: function(){
         this.logger.log('_export');
+        var exporter = Ext.create('CArABU.technicalservices.Exporter');
+        var grid = this.down('rallygrid'),
+            fileName = "project-cost-export-" + Rally.util.DateTime.format(new Date(), 'Y-m-d') + '.csv';
+        if (grid){
+            var csv = exporter.getCSVFromGrid(grid);
+            exporter.saveCSVToFile(csv, fileName);
+        }
     },
     _addCost: function(){
         var team = this.down('#cb-team') && this.down('#cb-team').getRecord(),

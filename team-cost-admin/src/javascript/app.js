@@ -147,6 +147,13 @@ Ext.define("team-cost-admin", {
     },
     _export: function(){
         this.logger.log('_export');
+        var exporter = Ext.create('CArABU.technicalservices.Exporter');
+        var grid = this.down('rallygrid'),
+            fileName = "project-cost-export-" + Rally.util.DateTime.format(new Date(), 'Y-m-d') + '.csv';
+        if (grid){
+            var csv = exporter.getCSVFromGrid(grid);
+            exporter.saveCSVToFile(csv, fileName);
+        }
     },
     _addCost: function(){
         var team = this.down('#cb-team') && this.down('#cb-team').getRecord(),
