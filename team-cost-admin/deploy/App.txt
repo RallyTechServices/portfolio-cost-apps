@@ -3,12 +3,12 @@
 <head>
     <title>Team Cost Admin App</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jun 14 2016 12:54:47 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Jun 14 2016 12:57:29 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jun 14 2016 12:54:47 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Tue Jun 14 2016 12:57:29 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 14690546852;
+        var CHECKSUM = 14882498229;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -509,11 +509,12 @@ Ext.define('CArABU.technicalservices.Exporter',{
 
 
 
-Ext.define('CArABU.technicalservices.ModelBuilder',{
+Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
     singleton: true,
-
-    build: function(modelType, newModelName, prefPrefix) {
+    prefPrefix: 'costAsOf1-',
+    build: function(modelType, newModelName) {
         var deferred = Ext.create('Deft.Deferred');
+        var prefPrefix = CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix;
 
         Rally.data.ModelFactory.getModel({
             type: modelType,
@@ -588,7 +589,6 @@ Ext.define("team-cost-admin", {
     integrationHeaders : {
         name : "team-cost-admin"
     },
-    prefPrefix: 'costAsOf1-',
     minHeight: 500,
     defaultCost: 1000,
                         
@@ -598,7 +598,7 @@ Ext.define("team-cost-admin", {
     _fetchPreferenceModel: function(){
         var deferred = Ext.create('Deft.Deferred');
         this.logger.log('_fetchPreferenceModel');
-        CArABU.technicalservices.ModelBuilder.build('Preference', 'ProjectCostModel',this.prefPrefix).then({
+        CArABU.technicalservices.ProjectCostModelBuilder.build('Preference', 'ProjectCostModel').then({
             success: function(model){
                 deferred.resolve(model);
             }
@@ -623,7 +623,7 @@ Ext.define("team-cost-admin", {
                         filters: [{
                             property: 'Name',
                             operator: "contains",
-                            value: this.prefPrefix
+                            value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
                         }],
                         context: {
                             workspace: this.getContext().getWorkspace()._ref,

@@ -3,10 +3,10 @@
 <head>
     <title>Team Cost Admin App</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jun 14 2016 12:54:48 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Jun 14 2016 12:57:29 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jun 14 2016 12:54:48 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Tue Jun 14 2016 12:57:29 GMT-0600 (MDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     

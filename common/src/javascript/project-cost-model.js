@@ -1,9 +1,10 @@
 
-Ext.define('CArABU.technicalservices.ModelBuilder',{
+Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
     singleton: true,
-
-    build: function(modelType, newModelName, prefPrefix) {
+    prefPrefix: 'costAsOf1-',
+    build: function(modelType, newModelName) {
         var deferred = Ext.create('Deft.Deferred');
+        var prefPrefix = CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix;
 
         Rally.data.ModelFactory.getModel({
             type: modelType,

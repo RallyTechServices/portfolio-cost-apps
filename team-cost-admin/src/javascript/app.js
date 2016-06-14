@@ -11,7 +11,6 @@ Ext.define("team-cost-admin", {
     integrationHeaders : {
         name : "team-cost-admin"
     },
-    prefPrefix: 'costAsOf1-',
     minHeight: 500,
     defaultCost: 1000,
                         
@@ -21,7 +20,7 @@ Ext.define("team-cost-admin", {
     _fetchPreferenceModel: function(){
         var deferred = Ext.create('Deft.Deferred');
         this.logger.log('_fetchPreferenceModel');
-        CArABU.technicalservices.ModelBuilder.build('Preference', 'ProjectCostModel',this.prefPrefix).then({
+        CArABU.technicalservices.ProjectCostModelBuilder.build('Preference', 'ProjectCostModel').then({
             success: function(model){
                 deferred.resolve(model);
             }
@@ -46,7 +45,7 @@ Ext.define("team-cost-admin", {
                         filters: [{
                             property: 'Name',
                             operator: "contains",
-                            value: this.prefPrefix
+                            value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
                         }],
                         context: {
                             workspace: this.getContext().getWorkspace()._ref,
