@@ -123,7 +123,7 @@ Ext.define("team-cost-admin", {
                 itemId: 'cb-team',
                 labelAlign: 'right',
                 margin: margin,
-                width: 250,
+                width: 300,
                 labelWidth: 75,
                 storeConfig: {
                     model: 'Project',
@@ -142,7 +142,7 @@ Ext.define("team-cost-admin", {
                 itemId: 'nb-cost',
                 fieldLabel: 'Cost',
                 margin: margin,
-                width: 125,
+                width: 200,
                 labelWidth: 75,
                 labelAlign: 'right',
                 minValue: 1,
