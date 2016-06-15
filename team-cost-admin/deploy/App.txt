@@ -3,12 +3,12 @@
 <head>
     <title>Team Cost Admin App</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jun 15 2016 09:25:34 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Jun 15 2016 14:26:37 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jun 15 2016 09:25:34 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Wed Jun 15 2016 14:26:37 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 16016318761;
+        var CHECKSUM = 16179927775;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -511,7 +511,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
 
 Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
     singleton: true,
-    prefPrefix: 'costAsOf1-',
+    prefPrefix: 'costAsOf-',
     build: function(modelType, newModelName) {
         var deferred = Ext.create('Deft.Deferred');
         var prefPrefix = CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix;
@@ -648,6 +648,9 @@ Ext.define("team-cost-admin", {
                             property: 'Name',
                             operator: "contains",
                             value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
+                        },{
+                            property: 'Workspace',
+                            value: this.getContext().getWorkspace()._ref
                         }],
                         context: {
                             workspace: this.getContext().getWorkspace()._ref,
@@ -662,7 +665,6 @@ Ext.define("team-cost-admin", {
                         groupDir: 'ASC',
                         getGroupString: function(record) {
                             var project = record.get('Project');
-
                             return (project && project._refObjectName) || 'No Project';
                         }
                     },
@@ -672,7 +674,6 @@ Ext.define("team-cost-admin", {
                         startCollapsed: true
                     }],
                     columnCfgs: this._getColumnCfgs(),
-                    //pageSize: pageSize,
                     showRowActionsColumn: false,
                     emptyText: 'No specific project costs defined.',
                     showPagingToolbar: false
@@ -773,7 +774,8 @@ Ext.define("team-cost-admin", {
         var grid = this.down('rallygrid');
         if (grid){
            var newPref = Ext.create('ProjectCostModel',{
-                Project: team.get('_ref')
+                Project: team.get('_ref'),
+                Workspace: this.getContext().getWorkspace()._ref
             });
             newPref.setCostForProject(cost, asOfDate, userName);
             if (this._validate(grid.getStore(), newPref)){

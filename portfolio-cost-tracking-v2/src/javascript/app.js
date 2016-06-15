@@ -276,7 +276,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.completedScheduleStates = doneScheduleStates;
         }
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.normalizedCostPerUnit = settings.normalizedCostPerUnit;
-        
+
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.setProjectCostHistory(projectCostHistory);
 
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.preliminaryBudgetField = settings.preliminaryBudgetField;
