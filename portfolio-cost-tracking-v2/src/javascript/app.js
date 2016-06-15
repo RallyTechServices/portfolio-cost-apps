@@ -127,7 +127,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             context: this.getContext(),
             toggleState: 'grid',
             stateful: false,
-            stateId: 'gridboard-10',
+            stateId: 'gridboard-18',
             modelNames: _.clone(this.modelNames),
             plugins: this.getGridBoardPlugins(),
             gridConfig: {
