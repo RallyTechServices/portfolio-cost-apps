@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jun 14 2016 16:10:35 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Jun 15 2016 09:24:19 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jun 14 2016 16:10:35 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Wed Jun 15 2016 09:24:19 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 315597437489;
+        var CHECKSUM = 297613358508;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1059,29 +1059,7 @@ Ext.define('CArABU.technicalservices.CostTemplateColumn', {
         return this.tpl.apply(data);
     }
 });
-    Ext.define('Ext.ActualCostTemplate',{
-        extend: 'Ext.CostTemplate',
-        alias: ['widget.actualcosttemplatecolumn'],
-        costField: '_rollupDataActualCost'
-    });
 
-    Ext.define('Ext.TotalCostTemplate',{
-        extend: 'Ext.CostTemplate',
-        alias: ['widget.totalcosttemplatecolumn'],
-        costField: '_rollupDataTotalCost'
-    });
-
-    Ext.define('Ext.RemainingCostTemplate',{
-        extend: 'Ext.CostTemplate',
-        alias: ['widget.remainingcosttemplatecolumn'],
-        costField: '_rollupDataRemainingCost'
-    });
-
-    Ext.define('Ext.PreliminaryBudgetTemplate',{
-        extend: 'Ext.CostTemplate',
-        alias: ['widget.preliminarybudgettemplatecolumn'],
-        costField: '_rollupDataPreliminaryBudget'
-    });
 
 /**
  * Created this to allow for any custom fields to be used as the Preliminary Budget field
@@ -1094,7 +1072,7 @@ Ext.define('CArABU.technicalservices.NumberFieldComboBox', {
     alias: 'widget.numberfieldcombobox',
     _isNotHidden: function(field) {
         var validFields= ['PreliminaryEstimate','RefinedEstimate'],
-            allowCustomNumberFields = false;
+            allowCustomNumberFields = true;
 
         if (!field.hidden) {
 
@@ -1115,7 +1093,7 @@ Ext.define('CArABU.technicalservices.NumberFieldComboBox', {
 
 Ext.override(Rally.ui.grid.TreeGrid, {
     _mergeColumnConfigs: function(newColumns, oldColumns) {
-        console.log('_mergeColumnConfigs', newColumns, oldColumns);
+
         var mergedColumns= _.map(newColumns, function(newColumn) {
             var oldColumn = _.find(oldColumns, {dataIndex: this._getColumnName(newColumn)});
             if (oldColumn) {
@@ -1126,76 +1104,14 @@ Ext.override(Rally.ui.grid.TreeGrid, {
         }, this);
 
         mergedColumns = mergedColumns.concat(this.config.derivedColumns);
-        console.log('_mergeColumnConfigs', mergedColumns,this.config.derivedColumns);
         return mergedColumns;
     },
-    _getPersistableColumnConfig: function(column) {
-        console.log('_getPersistableColumnConfig', column);
-        var columnConfig = this._getColumnConfigFromColumn(column),
-            field = this._getModelField(columnConfig.dataIndex);
-
-        if (field && field.getUUID && field.getUUID()) {
-            columnConfig.dataIndex = field.getUUID();
-        }
-        console.log('_getPersistableColumnConfig', columnConfig);
-        return columnConfig;
-    },
-    _getStatefulColumns: function(columnCfgs) {
-
-        var columns =  _.filter(columnCfgs, function(columnCfg) {
-            var columnName = this._getColumnName(columnCfg);
-            return !_.isEmpty(columnName) && this._isStatefulColumn(columnName);
-        }, this);
-        console.log('--_getStatefulColumns', columnCfgs, columns,this.headerCt.getGridColumns());
-        return columns;
-    },
-    reconfigureWithColumns: function(columnCfgs, reconfigureExistingColumns, suspendLoad) {
-        console.log('--reconfigureWithColumns',columnCfgs);
-        columnCfgs = this._getStatefulColumns(columnCfgs);
-
-        if (!reconfigureExistingColumns) {
-            columnCfgs = this._mergeColumnConfigs(columnCfgs, this.columns);
-            columnCfgs = this._restoreColumnOrder(columnCfgs);
-        }
-
-        this.columnCfgs = columnCfgs;
-        this._buildColumns(true);
-        this._applyFetch();
-
-        var summaryRow = this.getView().getFeature('summaryrow');
-        if (summaryRow) {
-            summaryRow.toggleSummaryRow(this._shouldShowSummary());
-        }
-
-        this.on('reconfigure', function() {
-            this.headerCt.setSortState();
-        }, this, {single: true});
-        this.reconfigure(null, this.columns);
-        this.columns = this.headerCt.items.getRange();
-
-        if (!suspendLoad) {
-            this.getStore().load();
-        }
-    },
-    _applyStatefulColumns: function(columns) {
-        if (this.alwaysShowDefaultColumns) {
-            _.each(this.columnCfgs, function(columnCfg) {
-                if (!_.any(columns, {dataIndex: this._getColumnName(columnCfg)})) {
-                    columns.push(columnCfg);
-                }
-            }, this);
-        }
-        console.log('--_applyStatefulColumns', columns);
-        this.columnCfgs = columns;
-    },
-    getCurrentView: function(){
-        var view = _.pick(this.getState(), ['columns', 'sorters']);
-        view.columns = _.map(_.filter(view.columns,  {xtype: 'rallyfieldcolumn'}), function(c){
-            return _.pick(c, ['dataIndex','flex']);
-        });
-        console.log('--getCurrentView', view.columns);
-        return view;
-    },
+    _getColumnConfigsBasedOnCurrentOrder: function(columnConfigs) {
+         return _(this.headerCt.items.getRange()).map(function(column) {
+             //override:  Added additional search for column.text
+            return _.contains(columnConfigs, column.dataIndex) ? column.dataIndex : _.find(columnConfigs, {dataIndex: column.dataIndex, text: column.text});
+        }).compact().value();
+    }
 });
 
 Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
@@ -2913,7 +2829,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             context: this.getContext(),
             toggleState: 'grid',
             stateful: false,
-            stateId: 'gridboard-10',
+            stateId: 'gridboard-18',
             modelNames: _.clone(this.modelNames),
             plugins: this.getGridBoardPlugins(),
             gridConfig: {
