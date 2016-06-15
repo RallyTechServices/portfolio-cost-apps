@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Portfolio Cost Tracking (v2)</title>
+    <title>Portfolio Snapshot Viewer</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jun 15 2016 16:15:59 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Jun 15 2016 16:16:02 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jun 15 2016 16:15:59 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Wed Jun 15 2016 16:16:02 GMT-0600 (MDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -16,8 +16,8 @@
         Rally.onReady(function() {
             
             
-               Rally.launchApp('portfolio-cost-tracking-v2', {
-                   name: 'Portfolio Cost Tracking (v2)'
+               Rally.launchApp('snapshot-viewer', {
+                   name: 'Portfolio Snapshot Viewer'
                });
         });
     </script>
@@ -40,28 +40,6 @@
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
-}
-
-.lbl {
-
-    text-transform: uppercase;
-    font-family: ProximaNovaSemiBold, Helvetica, Arial;
-    font-size: 10px;
-}
-
-.x-form-trigger-wrap {
-    margin-top: 0px!important;
-}
-
-.x-column-header-text {
-    margin-right: 0px!important;
-}
-.x-box-inner {
-    overflow: visible;
-}
-
-p {
-    color:#FAD200;
 }
     </style>
 

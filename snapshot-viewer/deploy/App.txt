@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Team Cost Admin App</title>
+    <title>Portfolio Snapshot Viewer</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jun 15 2016 16:16:07 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Jun 15 2016 16:16:02 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jun 15 2016 16:16:07 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Wed Jun 15 2016 16:16:02 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 16911900515;
+        var CHECKSUM = 15780926362;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -589,7 +589,194 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
         return deferred;
     }
 });
-Ext.define("team-cost-admin", {
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350,
+    
+    informationalConfig: null,
+    
+    items: [{xtype:'container', itemId:'information' }],
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/var BUILDER = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+       
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+   
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    var stored_checksum = me._generateChecksum(text);
+                    if ( CHECKSUM !== stored_checksum ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _addToContainer: function(container){
+        var config = Ext.apply({
+            xtype:'container',
+            height: 200,
+            overflowY: true
+        }, this.informationalConfig);
+        
+        container.add(config);
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if ( !Ext.isEmpty( this.informationalConfig ) ) {
+            var container = this.down('#information');
+            this._addToContainer(container);
+            
+        }
+        
+        if (! app.isExternal() ) {
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            dock: 'bottom',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml,
+                doc: 'top'
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            dock:'bottom',
+            html:"This app was created by the CA AC Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html: Ext.String.format("Build date/time: {0} ({1})",
+                    APP_BUILD_DATE,
+                    BUILDER)
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define("snapshot-viewer", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
@@ -600,251 +787,74 @@ Ext.define("team-cost-admin", {
     ],
 
     integrationHeaders : {
-        name : "team-cost-admin"
+        name : "snapshot-viewer"
     },
-    minHeight: 500,
-    defaultCost: 1000,
-    currency: "$",
                         
     launch: function() {
-        this._initializeApp();
-    },
-    _fetchPreferenceModel: function(){
-        var deferred = Ext.create('Deft.Deferred');
-        this.logger.log('_fetchPreferenceModel');
-        CArABU.technicalservices.ProjectCostModelBuilder.build('Preference', 'ProjectCostModel').then({
-            success: function(model){
-                deferred.resolve(model);
-            }
-        });
-        return deferred;
-    },
-    _buildGrid: function(){
-
-        this.logger.log('_buildGrid');
-
-        if (this.down('rallygrid')){
-            this.down('rallygrid').destroy();
-        }
-        var currency = this.currency;
-        var groupHeaderTpl = Ext.create('Ext.XTemplate',
-            '<div><b>{name}</b>   (' + currency + '{children:this.getCurrentCost})</div>',
-            {
-                getCurrentCost: function(children) {
-                    var children = _.sortBy(children, function(c){ return c.get('__asOfDate'); }),
-                        currentDate = new Date(),
-                        cost = children.slice(-1)[0].get('__cost');
-
-                    Ext.Array.each(children, function(c){
-                        var asOfDate = c.get('__asOfDate');
-                        if (Rally.util.DateTime.getDifference(currentDate, asOfDate,'hour') >= 0){
-                            cost = c.get('__cost');
-                            return false;
-                        }
-                    },this,true);
-
-                    return cost;
-                }
-            }
-        );
-
-
-
-        this._fetchPreferenceModel().then({
-            success: function(model){
-                this.add({
-                    xtype: 'rallygrid',
-                    storeConfig: {
-                        model: model,
-                        fetch: ['Name','Project','Type','Value','CreationDate'],
-                        filters: [{
-                            property: 'Name',
-                            operator: "contains",
-                            value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
-                        },{
-                            property: 'Workspace',
-                            value: this.getContext().getWorkspace()._ref
-                        }],
-                        context: {
-                            workspace: this.getContext().getWorkspace()._ref,
-                            project: null
-                        },
-                        sorters: [{
-                            property: 'Name',
-                            direction: 'DESC'
-                        }],
-                        limit: 'Infinity',
-                        groupField: 'Project',
-                        groupDir: 'ASC',
-                        getGroupString: function(record) {
-                            var project = record.get('Project');
-                            return (project && project._refObjectName) || 'No Project';
-                        }
-                    },
-                    features: [{
-                        ftype: 'groupingsummary',
-                        groupHeaderTpl: groupHeaderTpl,
-                        startCollapsed: true
-                    }],
-                    columnCfgs: this._getColumnCfgs(),
-                    showRowActionsColumn: false,
-                    emptyText: 'No specific project costs defined.',
-                    showPagingToolbar: false
-                });
-            },
+        this._fetchSnapshotNames().then({
+            success: this._initializeApp,
+            failure: this._showError,
             scope: this
         });
     },
-    _initializeApp: function(){
-        this.logger.log('_initializeApp');
+    _fetchSnapshotNames: function(){
+        var deferred = Ext.create('Deft.Deferred');
 
-        if (this.down('#selector_box')){
-            this.down('#selector_box').destroy();
-        }
-
-
-        var margin = 5;
-        this.add({
-            xtype: 'container',
-            itemId: 'selector_box',
-            layout: 'hbox',
-
-            items: [{
-                xtype: 'rallycombobox',
-                fieldLabel: 'Team',
-                itemId: 'cb-team',
-                labelAlign: 'right',
-                margin: margin,
-                width: 300,
-                labelWidth: 75,
-                storeConfig: {
-                    model: 'Project',
-                    autoLoad: true,
-                    remoteFilter: false,
-                    fetch: ['Name','_ref'],
-                    sorters: [{
-                        property: 'Name',
-                        direction: 'ASC'
-                    }]
-                },
-                displayField: 'Name',
-                valueField: '_ref'
-            },{
-                xtype: 'rallynumberfield',
-                itemId: 'nb-cost',
-                fieldLabel: 'Cost',
-                margin: margin,
-                width: 200,
-                labelWidth: 75,
-                labelAlign: 'right',
-                minValue: 1,
-                value: this.defaultCost
-            },{
-                xtype: 'rallydatefield',
-                itemId: 'dt-asOfDate',
-                fieldLabel: 'as Of Date',
-                margin: margin,
-                labelAlign: 'right',
-                labelWidth: 75,
-                value: new Date()
-            },{
-                xtype: 'rallybutton',
-                text: '+Add',
-                margin: margin,
-                listeners: {
-                    scope: this,
-                    click: this._addCost
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'Preference',
+            fetch: ['Name','CreationDate','LastUpdateDate','Value'],
+            filters: [{
+                property: 'Name',
+                operator: 'contains',
+                value: CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix
+            }],
+            limit: 'Infinity'
+        }).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(operation.error.errors.join(','));
                 }
-            },{
-                xtype: 'rallybutton',
-                iconCls: 'icon-export secondary',
-                margin: '5 25 5 5',
-                listeners: {
-                    scope: this,
-                    click: this._export
-                }
-            }]
+            }
         });
-        this._buildGrid();
-    },
-    _export: function(){
-        this.logger.log('_export');
-        var exporter = Ext.create('CArABU.technicalservices.Exporter');
-        var grid = this.down('rallygrid'),
-            fileName = "project-cost-export-" + Rally.util.DateTime.format(new Date(), 'Y-m-d') + '.csv';
-        if (grid){
-            var csv = exporter.getCSVFromGrid(grid);
-            exporter.saveCSVToFile(csv, fileName);
-        }
-    },
-    _addCost: function(){
-        var team = this.down('#cb-team') && this.down('#cb-team').getRecord(),
-            cost = this.down('#nb-cost') && this.down('#nb-cost').getValue(),
-            asOfDate = this.down('#dt-asOfDate') && this.down('#dt-asOfDate').getValue() || new Date(),
-            userName = this.getContext().getUser().UserName;
 
-        this.logger.log('_addCost', team, cost, asOfDate, userName);
-        var grid = this.down('rallygrid');
-        if (grid){
-           var newPref = Ext.create('ProjectCostModel',{
-                Project: team.get('_ref'),
-                Workspace: this.getContext().getWorkspace()._ref
-            });
-            newPref.setCostForProject(cost, asOfDate, userName);
-            if (this._validate(grid.getStore(), newPref)){
-                newPref.save();
-                grid.getStore().add(newPref);
-            }
-        }
+        return deferred;
     },
-    _validate: function(store, newPref){
-        //verify that we aren't adding dups...
-        var dup = false;
-        Ext.Array.each(store.getRange(), function(r){
-            if (r.get('Name') === newPref.get('Name') && r.get('Project') && r.get('Project')._ref === newPref.get('Project')){
-                this.logger.log('_validate duplicate found: ',r.get('Name'), newPref.get('Name'),r.get('Project')._ref, newPref.get('Project'))
-                dup = true;
-                return false;
-            }
-        }, this);
-
-        if (dup){
-            this._showError("There is already a cost defined for the selected Project and Day.  To update the cost, please remove the existing one first.");
-            return false;
-        }
-        return true;
-    },
-
-    _getColumnCfgs: function(){
-        var me = this,
-            currency = this.currency;
-
-        return [{
-            xtype: 'rallyrowactioncolumn',
-            //Need to override this since we don't want a menu...
-            _renderGearIcon: function(value, metaData, record) {
-                return '<div class="row-action-icon icon-delete"/>';
-            },
-            _showMenu: function(view, el) {
-                me.logger.log('_removeEntry');
-                var selectedRecord = view.getRecord(Ext.fly(el).parent("tr"));
-                selectedRecord.destroy();
-            }
-        },
-            {dataIndex: 'Project', text: 'Project', flex: 2},
-            {dataIndex: '__cost', text: 'Cost', flex: 1, renderer: function(v){
-                return Ext.String.format('{0} {1}', currency, v);
-            }},
-            {dataIndex: '__asOfDate', text: 'As of Date', flex: 1, renderer: function(v){
-                return Rally.util.DateTime.format(v, 'Y-m-d');
-            }},
-            {dataIndex: '__userDisplayName', text: 'User', flex: 2}];
-    },
-
     _showError: function(msg){
-        this.logger.log('_showError', msg);
-        Rally.ui.notify.Notifier.showError({ message: msg });
+        Rally.ui.notify.Notifier.showError({message: msg });
     },
+    _initializeApp: function(snapshotNames){
+        this.logger.log('_initializeApp', snapshotNames);
+
+        if (!snapshotNames || snapshotNames.length === 0){
+            //write something in the container.
+        }
+
+        var snapshotData = _.map(snapshotNames, function(s){
+            var name = s.get('Name');
+            return {
+                name: CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshotName(name),
+                value: name
+            };
+        });
+        this.logger.log('snapshotData', snapshotData);
+        var cb = this.add({
+            xtype: 'rallycombobox',
+            store: Ext.create('Rally.data.custom.Store',{
+                data: snapshotData
+            }),
+            multiSelect: true,
+            displayField: 'name',
+            valueField: 'value'
+        });
+        cb.on('select', this._showSnapshots, this);
+
+    },
+    _showSnapshots: function(cb){
+        this.logger.log('_showSnapshots', cb.getValue());
+    },
+    
     getOptions: function() {
         return [
             {
@@ -873,8 +883,8 @@ Ext.define("team-cost-admin", {
 });
 
             
-               Rally.launchApp('team-cost-admin', {
-                   name: 'Team Cost Admin App'
+               Rally.launchApp('snapshot-viewer', {
+                   name: 'Portfolio Snapshot Viewer'
                });
         });
     </script>

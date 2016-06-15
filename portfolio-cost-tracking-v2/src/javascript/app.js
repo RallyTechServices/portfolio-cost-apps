@@ -136,7 +136,12 @@ Ext.define("portfolio-cost-tracking-v2", {
             gridConfig: {
                 columnCfgs: columnCfgs,
                 derivedColumns: customColumns,
-                store: store
+                store: store,
+                bulkEditConfig: {
+                    items: [{
+                        xtype: 'snapshotbulkmenuitem'
+                    }]
+                }
             },
             height: this.getHeight()
         });
