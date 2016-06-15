@@ -84,6 +84,7 @@
                     this.rollupItems[item.parent].addChild(item);
                 }
             }
+
         },
 
         _calculatePortfolioItemRollups: function(){

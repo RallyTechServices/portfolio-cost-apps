@@ -72,19 +72,19 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             totalUnitsForTaskFn: function(data){
                 return (data && data.ToDo || 0) + (data && data.Actuals || 0);
             }
-        },
-        timesheets: {
-            key: 'timesheets',
-            displayName: 'Time Spent',
-            label: 'Based on Timesheets',
-            defaultColumns: ['Name','Project'],
-            requiredStoryFetch: [],
-            requiredTaskFetch: [],
-            disabled: true,
-            actualUnitsForStoryFn: function(data){ return 0; },
-            actualUnitsForTaskFn: function(data){ return 0; },
-            totalUnitsForStoryFn: function(data){  return 0; },
-            totalUnitsForTaskFn: function(data){  return 0; }
+        //},
+        //timesheets: {
+        //    key: 'timesheets',
+        //    displayName: 'Time Spent',
+        //    label: 'Based on Timesheets',
+        //    defaultColumns: ['Name','Project'],
+        //    requiredStoryFetch: [],
+        //    requiredTaskFetch: [],
+        //    disabled: true,
+        //    actualUnitsForStoryFn: function(data){ return 0; },
+        //    actualUnitsForTaskFn: function(data){ return 0; },
+        //    totalUnitsForStoryFn: function(data){  return 0; },
+        //    totalUnitsForTaskFn: function(data){  return 0; }
         }
     },
 

@@ -1,7 +1,7 @@
 
 Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
     singleton: true,
-    prefPrefix: 'costAsOf1-',
+    prefPrefix: 'costAsOf-',
     build: function(modelType, newModelName) {
         var deferred = Ext.create('Deft.Deferred');
         var prefPrefix = CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix;

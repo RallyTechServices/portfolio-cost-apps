@@ -81,6 +81,9 @@ Ext.define("portfolio-cost-tracking-v2", {
                         property: 'Name',
                         operator: "contains",
                         value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
+                    },{
+                        property: 'Workspace',
+                        value: this.getContext().getWorkspace()._ref
                     }],
                     context: {
                         workspace: this.getContext().getWorkspace()._ref,
@@ -229,23 +232,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             }
         });
 
-        var dtPicker = this.down('#selector_box').add({
-            itemId: 'dt-projectCost',
-            xtype: 'rallydatefield',
-            fieldLabel: 'As of Date',
-            labelAlign: 'right',
-            labelWidth: 100,
-            value: new Date()
-        });
-        dtPicker.on('select',this._updateProjectCostDateSetting, this);
-
         return deferred.promise;
-    },
-    _updateProjectCostDateSetting: function(dt){
-        this.logger.log('_updateProjectCostDateSetting', dt.getValue())
-        if (dt && dt.getValue()){
-            CArABU.technicalservices.projectCostDate = dt.getValue();
-        }
     },
     _initializeRollupData: function(newType){
         this.logger.log('_initializeRollupData', newType);
@@ -289,13 +276,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.completedScheduleStates = doneScheduleStates;
         }
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.normalizedCostPerUnit = settings.normalizedCostPerUnit;
-
-        //var project_cpu = settings.projectCostPerUnit || {};
-        //if (!Ext.isObject(project_cpu)){
-        //    project_cpu = Ext.JSON.decode(project_cpu);
-        //}
-        //CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit = project_cpu;
-
+        
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.setProjectCostHistory(projectCostHistory);
 
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.preliminaryBudgetField = settings.preliminaryBudgetField;
@@ -425,28 +406,28 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         return [{
             text: "Actual Cost To Date",
-            xtype: 'costtemplatecolumn', //'actualcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             costField: '_rollupDataActualCost',
             sortable: false,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataActualCost')
         },{
             text: "Remaining Cost",
-            xtype: 'costtemplatecolumn', //'remainingcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataRemainingCost',
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataRemainingCost')
         }, {
             text: 'Total Projected',
-            xtype: 'costtemplatecolumn', //'totalcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataTotalCost',
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataTotalCost')
         },{
             text: 'Preliminary Budget',
-            xtype: 'costtemplatecolumn', //'preliminarybudgettemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataPreliminaryBudget',

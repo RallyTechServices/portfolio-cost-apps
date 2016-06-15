@@ -70,6 +70,9 @@ Ext.define("team-cost-admin", {
                             property: 'Name',
                             operator: "contains",
                             value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
+                        },{
+                            property: 'Workspace',
+                            value: this.getContext().getWorkspace()._ref
                         }],
                         context: {
                             workspace: this.getContext().getWorkspace()._ref,
@@ -193,7 +196,8 @@ Ext.define("team-cost-admin", {
         var grid = this.down('rallygrid');
         if (grid){
            var newPref = Ext.create('ProjectCostModel',{
-                Project: team.get('_ref')
+                Project: team.get('_ref'),
+                Workspace: this.getContext().getWorkspace()._ref
             });
             newPref.setCostForProject(cost, asOfDate, userName);
             if (this._validate(grid.getStore(), newPref)){
