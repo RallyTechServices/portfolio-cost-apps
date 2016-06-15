@@ -1,5 +1,27 @@
 #Team Cost Admin App
 
+An admin app to allow for managing team cost values (current and historical) for use with the portfolio item cost tracking v2 application. See details about how this is used in the 
+README for the portfolio item cost tracking v2 app.   
+
+![ScreenShot](/images/team-cost-admin.png)
+
+In order to add costs for a team at a certain point in time, select the team, enter the cost and select the first date at which that cost is valid.  
+
+To remove a cost, click the trash can icon next to the cost.  
+
+This app does not support editing costs.  To update a cost, you will need to remove it and recreate it for the date you would like to edit.  
+
+The app only allows one cost per project per day.  
+
+The grouped header shows the current team cost.  
+
+The costs are saved to preference objects for the project.  
+
+Default currency is $ and is NOT pulled from the portfolio item cost tracking v2 app settings.  
+
+
+
+
 ## Development Notes
 
 ### First Load

@@ -84,7 +84,6 @@ Ext.define("team-cost-admin", {
                         groupDir: 'ASC',
                         getGroupString: function(record) {
                             var project = record.get('Project');
-
                             return (project && project._refObjectName) || 'No Project';
                         }
                     },
@@ -94,7 +93,6 @@ Ext.define("team-cost-admin", {
                         startCollapsed: true
                     }],
                     columnCfgs: this._getColumnCfgs(),
-                    //pageSize: pageSize,
                     showRowActionsColumn: false,
                     emptyText: 'No specific project costs defined.',
                     showPagingToolbar: false
