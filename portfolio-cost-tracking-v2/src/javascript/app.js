@@ -55,16 +55,54 @@ Ext.define("portfolio-cost-tracking-v2", {
         });
     },
     loadModelNames: function () {
-        var promises = [this.fetchDoneStates(), this._createPITypePicker()];
+        var promises = [this.fetchDoneStates(), this._createPITypePicker(),this.fetchProjectCostHistory()];
         return Deft.Promise.all(promises).then({
             success: function (results) {
+                this.logger.log('results', results);
                 this.currentType = results[1];
-                this._initializeSettings(this.getSettings(), results[0], this.piTypePicker);
+                this._initializeSettings(this.getSettings(), results[0], this.piTypePicker, results[2]);
                 this._initializeRollupData(this.currentType.get('TypePath'));
                 return [this.currentType.get('TypePath')];
             },
             scope: this
         });
+    },
+    fetchProjectCostHistory: function(){
+        this.logger.log('fetchProjectCostHistory');
+        var deferred = Ext.create('Deft.Deferred'),
+            me=this;
+
+        CArABU.technicalservices.ProjectCostModelBuilder.build('Preference', 'ProjectCostModel').then({
+            success: function(model){
+                Ext.create('Rally.data.wsapi.Store',{
+                    model: model,
+                    fetch: ['Name','Project','Type','Value','CreationDate'],
+                    filters: [{
+                        property: 'Name',
+                        operator: "contains",
+                        value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
+                    },{
+                        property: 'Workspace',
+                        value: this.getContext().getWorkspace()._ref
+                    }],
+                    context: {
+                        workspace: this.getContext().getWorkspace()._ref,
+                        project: null
+                    }
+                }).load({
+                    callback: function(records, operation, success){
+                        me.logger.log('fetchProjectCostHistory', records, operation, success);
+                        if (success){
+                            deferred.resolve(records);
+                        } else {
+                            deferred.reject("Error loading project cost history: " + operation.error && operation.error.errors.join(','));
+                        }
+                    }
+                });
+            },
+            scope: this
+        });
+        return deferred;
     },
     loadGridBoard: function () {
         this.logger.log('loadGridBoard', this.modelNames);
@@ -92,7 +130,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             context: this.getContext(),
             toggleState: 'grid',
             stateful: false,
-            stateId: 'gridboard-2',
+            stateId: 'gridboard-18',
             modelNames: _.clone(this.modelNames),
             plugins: this.getGridBoardPlugins(),
             gridConfig: {
@@ -103,7 +141,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             height: this.getHeight()
         });
 
-        this.gridboard.on('modeltypeschange', this._onTypeChange, this);
+        //this.gridboard.on('modeltypeschange', this._onTypeChange, this);
 
         this.fireEvent('gridboardadded', this.gridboard);
     },
@@ -178,16 +216,14 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         this.piTypePicker = this.down('#selector_box').add({
             xtype: 'rallyportfolioitemtypecombobox',
-         //   preferenceName: this.getStateId('typepicker'),
-
             context: this.getContext(),
             labelAlign: 'right',
             labelWidth: 100,
             listeners: {
                 select: this._onTypeChange,
                 ready: {
-                    fn: function (picker, records) {
-                        var newType = records && records.length > 0 && records[0];
+                    fn: function (picker) {
+                        var newType = picker && picker.getRecord();
                         deferred.resolve(newType);
                     },
                     single: true
@@ -196,17 +232,8 @@ Ext.define("portfolio-cost-tracking-v2", {
             }
         });
 
-        this.down('#selector_box').add({
-            xtype: 'rallydatefield',
-            fieldLabel: 'As of Date',
-            labelAlign: 'right',
-            labelWidth: 100,
-            value: new Date()
-        });
-
         return deferred.promise;
     },
-
     _initializeRollupData: function(newType){
         this.logger.log('_initializeRollupData', newType);
         if (this.rollupData){
@@ -229,17 +256,17 @@ Ext.define("portfolio-cost-tracking-v2", {
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.portfolioItemTypes = portfolioItemTypes;
     },
     _onTypeChange: function (picker, records) {
-        var newType = records && records.length > 0 && records[0];
-        this.logger.log('_onTypeChange', picker, records, newType);
+        var newType = picker && picker.getRecord();
+        this.logger.log('_onTypeChange', picker, newType);
 
         if (newType && this.currentType && newType.get('_ref') !== this.currentType.get('_ref')) {
             this.currentType = newType;
             this.modelNames = [newType.get('TypePath')];
             this._initializeRollupData(newType.get('TypePath'));
-            this.gridboard.fireEvent('modeltypeschange', this.gridboard, [newType]);
+            this.loadGridBoard();
         }
     },
-    _initializeSettings: function(settings, doneScheduleStates, piTypePicker){
+    _initializeSettings: function(settings, doneScheduleStates, piTypePicker, projectCostHistory){
 
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.notAvailableText = "--";
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.currencySign = settings.currencySign;
@@ -249,12 +276,8 @@ Ext.define("portfolio-cost-tracking-v2", {
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.completedScheduleStates = doneScheduleStates;
         }
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.normalizedCostPerUnit = settings.normalizedCostPerUnit;
-
-        var project_cpu = settings.projectCostPerUnit || {};
-        if (!Ext.isObject(project_cpu)){
-            project_cpu = Ext.JSON.decode(project_cpu);
-        }
-        CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit = project_cpu;
+        
+        CArABU.technicalservices.PortfolioItemCostTrackingSettings.setProjectCostHistory(projectCostHistory);
 
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.preliminaryBudgetField = settings.preliminaryBudgetField;
 
@@ -291,6 +314,7 @@ Ext.define("portfolio-cost-tracking-v2", {
     },
     _loadRollupData: function(records){
         this.logger.log('_loadRollupData', records);
+
         var loader = Ext.create('CArABU.technicalservices.RollupDataLoader',{
             context: this.getContext(),
             portfolioItemTypes: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes(),
@@ -315,7 +339,7 @@ Ext.define("portfolio-cost-tracking-v2", {
         portfolioHash[records[0].get('_type').toLowerCase()] = records;
         this.rollupData.addRollupRecords(portfolioHash, stories);
         this.rollupData.updateModels(records);
-
+        this.down('rallygridboard').getGridOrBoard().getView().refresh();
         me._showStatus(null);
     },
     _showStatus: function(message){
@@ -349,19 +373,17 @@ Ext.define("portfolio-cost-tracking-v2", {
         this.logger.log('_getTreeGridStore', fetch)
 
         return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
-            autoLoad: true,
-            childPageSizeEnabled: true,
+            //childPageSizeEnabled: true,
             context: this.getContext().getDataContext(),
             enableHierarchy: true,
             fetch: fetch,
             models: this.modelNames, // _.clone(this.models),
-            pageSize: 25,
+            //pageSize: 25,
             remoteSort: true,
             root: {expanded: true}
         }).then({
             success: function (treeGridStore) {
                 treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null});
-                treeGridStore.on('load', this._fireTreeGridReady, this, { single: true });
                 treeGridStore.on('load', this.updateDerivedColumns, this);
                 return treeGridStore;
             },
@@ -384,28 +406,28 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         return [{
             text: "Actual Cost To Date",
-            xtype: 'costtemplatecolumn', //'actualcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             costField: '_rollupDataActualCost',
             sortable: false,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataActualCost')
         },{
             text: "Remaining Cost",
-            xtype: 'costtemplatecolumn', //'remainingcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataRemainingCost',
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataRemainingCost')
         }, {
             text: 'Total Projected',
-            xtype: 'costtemplatecolumn', //'totalcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataTotalCost',
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataTotalCost')
         },{
             text: 'Preliminary Budget',
-            xtype: 'costtemplatecolumn', //'preliminarybudgettemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataPreliminaryBudget',

@@ -11,7 +11,6 @@
     _notEstimated: true,
     children: undefined,
 
-    projectCosts: undefined,
     useBudgetCalc: false,
 
     constructor: function(record) {
@@ -22,7 +21,7 @@
         this.objectID = record.get('ObjectID');
 
         this._rollupDataPreliminaryBudget = this._calculatePreliminaryBudget(record.getData());
-        this._rollupDataTotalCost = this.getPreliminaryBudget() || 0;
+      //  this._rollupDataTotalCost = this.getPreliminaryBudget() || 0;
         this._rollupDataToolTip = this.getTooltip();
         this._rollupDataRemainingCost = this.getRemainingCostRollup();
 
@@ -69,31 +68,36 @@
     getTooltip: function(){
 
         var completed  = CArABU.technicalservices.PortfolioItemCostTrackingSettings.notAvailableText;
-        if ((this.__actualUnits >= 0) && (this.__totalUnits >=0 )){
-            completed = Ext.String.format("{0}/{1}", this.__actualUnits, this.__totalUnits);
+        if ((this.__actualUnits >= 0) && (this.__totalUnits >0 )){
+            completed = Ext.String.format("{0} of {1}", this.__actualUnits, this.__totalUnits);
         }
 
         var calc_type_name = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCalculationTypeDisplayName();
 
-        var html = Ext.String.format('{0} completed {1}<br/>', calc_type_name, completed);
-        if (this.projectCosts){
-            html += '<br/>Cost per unit:<br/>';
-            _.each(this.projectCosts, function(project_cost, project_name){
-                html += Ext.String.format('{0} {1}<br/>', CArABU.technicalservices.PortfolioItemCostTrackingSettings.formatCost(project_cost), project_name);
-            });
-        }
+        var html = Ext.String.format('{1} {0} Accepted<br/><br/>', calc_type_name, completed);
 
+        html += Ext.String.format("<b>Preliminary Budget</b><br/>Preliminary Budget Field Value * Current Team Cost<br/><br/>");
 
-        if (this._notEstimated){
+        if (this.__totalUnits > 0){
+            html += Ext.String.format('<b>Actual Cost</b><br/>{0} * Team Cost on Accepted Date for Story(s)<br/><br/>', this.__actualUnits || 0);
+
+            if (this._notEstimated){
+                html += '<b>Remaining Cost</b><br/>Preliminary Budget - Actual Cost or 0 (whichever is greater)<br/><br/>';
+            } else {
+                html += Ext.String.format('<b>Remaining Cost</b><br/>({1} - {0}) * Current Team Cost<br/><br/>', this.__actualUnits, this.__totalUnits);
+            }
+            html += '<b>Total Projected</b><br/>Actual Cost + Remaining Cost<br/><br/>';
+        } else {
             html += '<br/><p>Portfolio Item has missing ' + calc_type_name + '.  Preliminary Budget is being used to calculate Projected and Remaining costs.</p>';
         }
         return html;
     },
     getTotalCostRollup: function(){
-        if (this._notEstimated){
+        //With this new version, this should always be Actual + Remaining
+        //if (this._notEstimated){
             return this.getActualCostRollup() + this.getRemainingCostRollup();
-        }
-        return this._rollupDataTotalCost;
+        //}
+        //return this._rollupDataTotalCost;
     },
     getActualCostRollup: function(){
         return this._rollupDataActualCost;

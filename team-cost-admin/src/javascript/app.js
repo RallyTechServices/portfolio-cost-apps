@@ -13,6 +13,7 @@ Ext.define("team-cost-admin", {
     },
     minHeight: 500,
     defaultCost: 1000,
+    currency: "$",
                         
     launch: function() {
         this._initializeApp();
@@ -34,6 +35,29 @@ Ext.define("team-cost-admin", {
         if (this.down('rallygrid')){
             this.down('rallygrid').destroy();
         }
+        var currency = this.currency;
+        var groupHeaderTpl = Ext.create('Ext.XTemplate',
+            '<div><b>{name}</b>   (' + currency + '{children:this.getCurrentCost})</div>',
+            {
+                getCurrentCost: function(children) {
+                    var children = _.sortBy(children, function(c){ return c.get('__asOfDate'); }),
+                        currentDate = new Date(),
+                        cost = children.slice(-1)[0].get('__cost');
+
+                    Ext.Array.each(children, function(c){
+                        var asOfDate = c.get('__asOfDate');
+                        if (Rally.util.DateTime.getDifference(currentDate, asOfDate,'hour') >= 0){
+                            cost = c.get('__cost');
+                            return false;
+                        }
+                    },this,true);
+
+                    return cost;
+                }
+            }
+        );
+
+
 
         this._fetchPreferenceModel().then({
             success: function(model){
@@ -46,6 +70,9 @@ Ext.define("team-cost-admin", {
                             property: 'Name',
                             operator: "contains",
                             value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
+                        },{
+                            property: 'Workspace',
+                            value: this.getContext().getWorkspace()._ref
                         }],
                         context: {
                             workspace: this.getContext().getWorkspace()._ref,
@@ -65,10 +92,10 @@ Ext.define("team-cost-admin", {
                     },
                     features: [{
                         ftype: 'groupingsummary',
-                        groupHeaderTpl: '{name} ({rows.length})'
+                        groupHeaderTpl: groupHeaderTpl,
+                        startCollapsed: true
                     }],
                     columnCfgs: this._getColumnCfgs(),
-                    //pageSize: pageSize,
                     showRowActionsColumn: false,
                     emptyText: 'No specific project costs defined.',
                     showPagingToolbar: false
@@ -84,6 +111,7 @@ Ext.define("team-cost-admin", {
             this.down('#selector_box').destroy();
         }
 
+
         var margin = 5;
         this.add({
             xtype: 'container',
@@ -97,6 +125,7 @@ Ext.define("team-cost-admin", {
                 labelAlign: 'right',
                 margin: margin,
                 width: 300,
+                labelWidth: 75,
                 storeConfig: {
                     model: 'Project',
                     autoLoad: true,
@@ -114,6 +143,8 @@ Ext.define("team-cost-admin", {
                 itemId: 'nb-cost',
                 fieldLabel: 'Cost',
                 margin: margin,
+                width: 200,
+                labelWidth: 75,
                 labelAlign: 'right',
                 minValue: 1,
                 value: this.defaultCost
@@ -123,6 +154,7 @@ Ext.define("team-cost-admin", {
                 fieldLabel: 'as Of Date',
                 margin: margin,
                 labelAlign: 'right',
+                labelWidth: 75,
                 value: new Date()
             },{
                 xtype: 'rallybutton',
@@ -164,7 +196,8 @@ Ext.define("team-cost-admin", {
         var grid = this.down('rallygrid');
         if (grid){
            var newPref = Ext.create('ProjectCostModel',{
-                Project: team.get('_ref')
+                Project: team.get('_ref'),
+                Workspace: this.getContext().getWorkspace()._ref
             });
             newPref.setCostForProject(cost, asOfDate, userName);
             if (this._validate(grid.getStore(), newPref)){
@@ -192,7 +225,9 @@ Ext.define("team-cost-admin", {
     },
 
     _getColumnCfgs: function(){
-        var me = this;
+        var me = this,
+            currency = this.currency;
+
         return [{
             xtype: 'rallyrowactioncolumn',
             //Need to override this since we don't want a menu...
@@ -206,7 +241,9 @@ Ext.define("team-cost-admin", {
             }
         },
             {dataIndex: 'Project', text: 'Project', flex: 2},
-            {dataIndex: '__cost', text: 'Cost', flex: 1},
+            {dataIndex: '__cost', text: 'Cost', flex: 1, renderer: function(v){
+                return Ext.String.format('{0} {1}', currency, v);
+            }},
             {dataIndex: '__asOfDate', text: 'As of Date', flex: 1, renderer: function(v){
                 return Rally.util.DateTime.format(v, 'Y-m-d');
             }},

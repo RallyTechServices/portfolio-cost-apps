@@ -4,8 +4,6 @@
     Ext.define('CArABU.technicalservices.RollupCalculator', {
         extend: 'Ext.Base',
 
-
-
         mixins: {
             observable: 'Ext.util.Observable'
         },
@@ -16,6 +14,7 @@
             this.mixins.observable.constructor.call(this, config);
             this.rollupItems = {};
             this.portfolioItemType = config.portfolioItemType;
+            this.projectCostDate = config.projectCostDate || new Date();
         },
         addRollupRecords: function(portfolioItemRecordHash, stories){
             var portfolioItemTypes = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes();
@@ -28,7 +27,6 @@
 
             this._addStories(stories);
             this._calculatePortfolioItemRollups();
-
         },
         getRollupData: function(record){
             if (!record){
@@ -86,6 +84,7 @@
                     this.rollupItems[item.parent].addChild(item);
                 }
             }
+
         },
 
         _calculatePortfolioItemRollups: function(){

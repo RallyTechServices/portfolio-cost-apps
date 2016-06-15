@@ -15,7 +15,6 @@ Ext.define('CArABU.technicalservices.CostTemplateColumn', {
             costField: me.costField,
 
             getCost: function(values){
-                console.log('getCost', values);
                 if (values[this.costField] === null){
                     return CArABU.technicalservices.PortfolioItemCostTrackingSettings.notAvailableText;
                 } else {
@@ -45,3 +44,4 @@ Ext.define('CArABU.technicalservices.CostTemplateColumn', {
         return this.tpl.apply(data);
     }
 });
+

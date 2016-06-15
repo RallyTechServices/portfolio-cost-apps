@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Jun 13 2016 12:36:21 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Jun 15 2016 13:59:25 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Jun 13 2016 12:36:21 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Wed Jun 15 2016 13:59:25 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 261053225508;
+        var CHECKSUM = 167125082490;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -16,241 +16,6 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
-(function() {
-    var Ext = window.Ext4 || window.Ext;
-
-    Ext.define('CArABU.technicalservices.RollupItem',{
-
-    _rollupDataPreliminaryBudget: undefined,
-    _rollupDataTotalCost: undefined,
-    _rollupDataActualCost: undefined,
-    _rollupDataRemainingCost: undefined,
-    _rollupDataToolTip: null,
-    _notEstimated: true,
-    children: undefined,
-
-    projectCosts: undefined,
-    useBudgetCalc: false,
-
-    constructor: function(record) {
-        this._rollupDataTotalCost = 0;
-        this._rollupDataActualCost = 0;
-
-        this.parent = record.get('Parent') && record.get('Parent').ObjectID || null;
-        this.objectID = record.get('ObjectID');
-
-        this._rollupDataPreliminaryBudget = this._calculatePreliminaryBudget(record.getData());
-        this._rollupDataTotalCost = this.getPreliminaryBudget() || 0;
-        this._rollupDataToolTip = this.getTooltip();
-        this._rollupDataRemainingCost = this.getRemainingCostRollup();
-
-
-        Ext.apply(this, record.getData());
-    },
-    addChild: function(objectID){
-        if (!this.children){
-            this.children = [];
-        }
-        this.children.push(objectID);
-    },
-    getExportRow: function(columns, ancestors){
-        var rec = Ext.clone(ancestors);
-
-        rec[this._type] = this.FormattedID;
-
-        rec.type = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getTypePathDisplayName(this._type);
-        _.each(columns, function(c){
-            var field = c.costField || c.dataIndex || null;
-            if (field){
-                var data = this[field];
-                if (Ext.isObject(data)){
-                    rec[field] = data._refObjectName;
-                } else if (Ext.isDate(data)){
-                    rec[field] = Rally.util.DateTime.formatWithDefaultDateTime(data);
-                } else {
-                    rec[field] = data;
-                }
-            }
-        }, this);
-        return rec;
-    },
-    _calculatePreliminaryBudget: function(data){
-        var preliminaryBudgetField = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.preliminaryBudgetField;
-        if (data && data[preliminaryBudgetField]){
-            //We need to do this in case we are using hte PreliminaryEstimate field, which is an object
-            var val = data[preliminaryBudgetField].Value || data[preliminaryBudgetField];
-            var cpu = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref);
-            return cpu * val;
-        }
-        return null;
-    },
-    getTooltip: function(){
-
-        var completed  = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.notAvailableText;
-        if ((this.__actualUnits >= 0) && (this.__totalUnits >=0 )){
-            completed = Ext.String.format("{0}/{1}", this.__actualUnits, this.__totalUnits);
-        }
-
-        var calc_type_name = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getCalculationTypeDisplayName();
-
-        var html = Ext.String.format('{0} completed {1}<br/>', calc_type_name, completed);
-        if (this.projectCosts){
-            html += '<br/>Cost per unit:<br/>';
-            _.each(this.projectCosts, function(project_cost, project_name){
-                html += Ext.String.format('{0} {1}<br/>', Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.formatCost(project_cost), project_name);
-            });
-        }
-
-
-        if (this._notEstimated){
-            html += '<br/><p>Portfolio Item has missing ' + calc_type_name + '.  Preliminary Budget is being used to calculate Projected and Remaining costs.</p>';
-        }
-        return html;
-    },
-    getTotalCostRollup: function(){
-        if (this._notEstimated){
-            return this.getActualCostRollup() + this.getRemainingCostRollup();
-        }
-        return this._rollupDataTotalCost;
-    },
-    getActualCostRollup: function(){
-        return this._rollupDataActualCost;
-    },
-    getRemainingCostRollup: function(){
-        if (this._notEstimated){
-            return Math.max(this.getPreliminaryBudget() || 0 - this.getActualCostRollup(), 0);
-        }
-        return this._rollupDataRemainingCost;
-    },
-    getPreliminaryBudget: function(){
-        return this._rollupDataPreliminaryBudget;
-    }
-});
-})();
-Ext.define('CArABU.technicalservices.LowestLevelPortfolioRollupItem',{
-    extend: 'CArABU.technicalservices.RollupItem',
-
-    processChildren: function(){
-
-        this._rollupDataToolTip = this.getTooltip();
-
-        if (this._notEstimated && this.getPreliminaryBudget() > this.getActualCostRollup()){
-            this._rollupDataRemainingCost = this.getPreliminaryBudget() - this.getActualCostRollup();
-            this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;
-        } else {
-            this._rollupDataRemainingCost = this._rollupDataTotalCost  - this._rollupDataActualCost;
-        }
-    },
-    addChild: function(child){
-        if (!this.children){
-            this.children = [];
-            this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
-            this._rollupDataActualCost = 0;
-            this._rollupDataRemainingCost = 0;
-            this.__totalUnits = 0;
-            this.__actualUnits = 0;
-
-        }
-        this.children.push(child);
-
-        this.__totalUnits += child.__totalUnits || 0;
-        this.__actualUnits += child.__actualUnits || 0;
-
-        this._notEstimated = (this.__totalUnits === 0);
-
-        this._rollupDataActualCost += child._rollupDataActualCost;
-        this._rollupDataTotalCost += child._rollupDataTotalCost;
-        this._rollupDataRemainingCost = this._rollupDataTotalCost  - this._rollupDataActualCost;
-
-        if (!this.projectCosts || !this.projectCosts[child.Project._ref]){
-            this.projectCosts = this._updateProjectNameAndCostHash(this.projectCosts, child.Project);
-        }
-    },
-    _updateProjectNameAndCostHash: function(projectCosts, project){
-
-        projectCosts = projectCosts || {};
-
-        var name = project._refObjectName,
-            cost = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getCostPerUnit(project._ref);
-
-        if (Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.isProjectUsingNormalizedCost(project._ref)){
-            name =  "normalized (default)";
-        }
-        projectCosts[name] = cost;
-        return projectCosts;
-    }
-});
-Ext.define('CArABU.technicalservices.UpperLevelPortfolioRollupItem',{
-    extend: 'CArABU.technicalservices.RollupItem',
-
-
-    processChildren: function(){
-
-        if (this.children && this.children.length > 0){
-            var rollupDataTotal = 0,
-                rollupDataActual = 0,
-                rollupDataRemaining = 0,
-                totalUnitsSum = 0,
-                actualUnitsSum = 0,
-                projectCosts = {},
-                rollupItems = this.children || [],
-                notEstimated = true;
-
-
-            for (var i=0; i<rollupItems.length; i++){
-                var item = rollupItems[i];
-                item.processChildren();
-
-                rollupDataTotal += item.getTotalCostRollup() ;
-                rollupDataActual +=  item.getActualCostRollup();
-                rollupDataRemaining += item.getRemainingCostRollup();
-                totalUnitsSum += item.__totalUnits || 0;
-                actualUnitsSum += item.__actualUnits || 0;
-                projectCosts = Ext.merge(projectCosts, item.projectCosts || {});
-                notEstimated = notEstimated && item._notEstimated;
-            }
-
-            this._notEstimated = notEstimated;
-            this._rollupDataTotalCost = rollupDataTotal;
-            this._rollupDataActualCost = rollupDataActual;
-            this._rollupDataRemainingCost = rollupDataRemaining;
-            this.projectCosts = projectCosts;
-            this.__totalUnits = totalUnitsSum;
-            this.__actualUnits = actualUnitsSum;
-            this._rollupDataToolTip = this.getTooltip();
-        }
-    }
-});
-
-Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
-    extend: 'CArABU.technicalservices.RollupItem',
-    constructor: function(record, totalFn, actualFn) {
-
-        var data = record.data;
-        if (record.getData && record.getData()){
-            data = record.getData();
-        }
-
-        if (data){
-            this.__totalUnits = totalFn(data);
-            this.__actualUnits = actualFn(data);
-            this._notEstimated = false;
-            var costPerUnit = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref);
-
-            this._rollupDataTotalCost = (this.__totalUnits * costPerUnit) || 0;
-            this._rollupDataActualCost = (this.__actualUnits * costPerUnit) || 0;
-            this._rollupDataRemainingCost = this._rollupDataTotalCost - this._rollupDataActualCost;
-
-            this.parent = record.get('PortfolioItem') && record.get('PortfolioItem').ObjectID || null;
-            this.objectID = data.ObjectID;
-
-            this._rollupDataPreliminaryBudget = null;
-            this._rollupDataToolTip = null;
-
-            Ext.apply(this, data);
-        }
-    }
-});
 /**
  * A link that pops up a version dialog box
  */
@@ -438,253 +203,6 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
-Ext.define('CArABU.technicalservices.CostPerProjectSettings',{
-    extend: 'Ext.form.field.Base',
-    alias: 'widget.costperprojectsettings',
-    fieldSubTpl: '<div id="{id}" class="settings-grid"></div>',
-    width: '100%',
-    cls: 'column-settings',
-
-    store: undefined,
-
-    onDestroy: function() {
-        if (this._grid) {
-            this._grid.destroy();
-            delete this._grid;
-        }
-        this.callParent(arguments);
-    },
-    initComponent: function(){
-
-        this.callParent();
-        this.addEvents('ready');
-
-        var store = Ext.create('Rally.data.wsapi.Store', {
-            model: Ext.identityFn('Project'),
-            fetch: ['Name'],
-            context: {
-                project: null
-            },
-            limit: 'Infinity'
-        });
-        store.load({
-            scope: this,
-            callback: this._buildProjectGrid
-        });
-    },
-
-    _buildProjectGrid: function(records, operation, success){
-
-        var decodedValue = {};
-        if (this.initialConfig && this.initialConfig.value && !_.isEmpty(this.initialConfig.value)){
-            if (!Ext.isObject(this.initialConfig.value)){
-                decodedValue = Ext.JSON.decode(this.initialConfig.value);
-            } else {
-                decodedValue = this.initialConfig.value;
-            }
-        }
-
-        var data = [],
-            empty_text = "No exceptions";
-
-        if (success) {
-            _.each(records, function(project){
-                var cost = decodedValue[project.get('_ref')] || null;
-                if (cost){
-                    data.push({projectRef: project.get('_ref'), projectName: project.get('Name'), cost: cost});
-                }
-            });
-        } else {
-            empty_text = "Error(s) fetching Project data: <br/>" + operation.error.errors.join('<br/>');
-        }
-
-        var custom_store = Ext.create('Ext.data.Store', {
-            fields: ['projectRef', 'projectName', 'cost'],
-            data: data
-        });
-
-        this._grid = Ext.create('Rally.ui.grid.Grid', {
-            autoWidth: true,
-            renderTo: this.inputEl,
-            columnCfgs: this._getColumnCfgs(),
-            // showRowActionsColumn: false,
-            showPagingToolbar: false,
-            store: custom_store,
-            maxHeight: 300,
-            margin: '20 0 0 0',
-            emptyText: empty_text,
-            editingConfig: {
-                publishMessages: false
-            }
-        });
-
-        var width = Math.max(this.inputEl.getWidth(true),300);
-
-        Ext.create('Rally.ui.Button',{
-            text: 'Select Projects',
-            renderTo: this.inputEl,
-            margin: '10 0 0 0',
-            listeners: {
-                scope: this,
-                click: function(){
-
-                    Ext.create('Rally.apps.portfolioitemcosttracking.ProjectPickerDialog',{
-                        autoShow: true,
-                        maxHeight: 400,
-                        maxWidth: 400,
-                        width: Math.min(width, 400),
-                        title: 'Choose Project',
-                        selectedRefs: _.pluck(data, 'projectRef'),
-                        listeners: {
-                            scope: this,
-                            itemschosen: function(items){
-                                var new_data = [],
-                                    store = this._grid.getStore();
-
-                                _.each(items, function(item){
-                                    if (!store.findRecord('projectRef',item.get('_ref'))){
-                                        new_data.push({
-                                            projectRef: item.get('_ref'),
-                                            projectName: item.get('Name'),
-                                            cost: null
-                                        });
-                                    }
-                                });
-                                this._grid.getStore().add(new_data);
-                            }
-                        }
-                    });
-                }
-            }
-        });
-
-        this.fireEvent('ready', true);
-    },
-    _removeProject: function(){
-        this.grid.getStore().remove(this.record);
-    },
-    _getColumnCfgs: function() {
-        var me = this;
-
-        var columns = [{
-            xtype: 'rallyrowactioncolumn',
-            scope: this,
-            rowActionsFn: function(record){
-                return  [
-                    {text: 'Remove', record: record, handler: me._removeProject, grid: me._grid }
-                ];
-            },
-            //Need to override this since we are using a custom store
-            _renderGearIcon: function(value, metaData, record) {
-                return '<div class="row-action-icon icon-gear"/>';
-            }
-        },{
-            text: 'Project',
-            dataIndex: 'projectRef',
-            flex: 1,
-            editor: false,
-            renderer: function(v, m, r){
-                return r.get('projectName');
-            },
-            getSortParam: function(v,m,r){
-                return 'projectName';
-            }
-        },{
-            text: 'Cost Per Unit',
-            dataIndex: 'cost',
-            editor: {
-                xtype: 'rallynumberfield'
-            },
-            renderer: function(v){
-                if (v && v > 0){
-                    return v;
-                }
-                return "Use Default";
-            }
-        }];
-        return columns;
-    },
-    /**
-     * When a form asks for the data this field represents,
-     * give it the name of this field and the ref of the selected project (or an empty string).
-     * Used when persisting the value of this field.
-     * @return {Object}
-     */
-    getSubmitData: function() {
-        var data = {};
-        data[this.name] = Ext.JSON.encode(this._buildSettingValue());
-        return data;
-    },
-    _buildSettingValue: function() {
-        var mappings = {};
-        var store = this._grid.getStore();
-
-        store.each(function(record) {
-            if (record.get('cost') && record.get('projectRef')) {
-                mappings[record.get('projectRef')] = record.get('cost');
-            }
-        }, this);
-        return mappings;
-    },
-
-    getErrors: function() {
-        var errors = [];
-        //Add validation here
-        return errors;
-    },
-    setValue: function(value) {
-        this.callParent(arguments);
-        this._value = value;
-    }
-});
-
-
-
-Ext.define('CArABU.technicalservices.CostTemplateColumn', {
-    extend: 'Ext.grid.column.Template',
-    alias: ['widget.costtemplatecolumn'],
-
-    align: 'right',
-
-    initComponent: function(){
-        var me = this;
-
-        Ext.QuickTips.init();
-
-        me.tpl = new Ext.XTemplate('<tpl><div data-qtip="{[this.getTooltip(values)]}" style="cursor:pointer;text-align:right;">{[this.getCost(values)]}</div></tpl>',{
-            costField: me.costField,
-
-            getCost: function(values){
-                if (values[this.costField] === null){
-                    return Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.notAvailableText;
-                } else {
-                    var html = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.formatCost(values[this.costField] || 0);
-                    if (values._notEstimated && this.costField === '_rollupDataTotalCost'){
-                        html = '<span class="picto icon-warning warning" style="color:#FAD200;font-size:10px;"></span>' + html;
-                    }
-                    return html;
-                }
-            },
-            getTooltip: function(values){
-                if (values._rollupDataToolTip){
-                    return values._rollupDataToolTip;
-                }
-                return '';
-            }
-
-        });
-        me.hasCustomRenderer = true;
-        me.callParent(arguments);
-    },
-    getValue: function(){
-        return values[this.costField] || 0;
-    },
-    defaultRenderer: function(value, meta, record) {
-        var data = Ext.apply({}, record.data._rollupData); //, record.getAssociatedData());
-        return this.tpl.apply(data);
-    }
-});
-
 Ext.define('CArABU.technicalservices.Exporter',{
 
     mixins: {
@@ -776,17 +294,17 @@ Ext.define('CArABU.technicalservices.Exporter',{
     },
     fetchExportData: function(rootModel, rootFilters, fetch, columns){
         var deferred = Ext.create('Deft.Deferred');
-        var rootFetch = Ext.Array.merge(fetch, Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getPortfolioItemFetch());
+        var rootFetch = Ext.Array.merge(fetch, CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemFetch());
         var me = this;
 
 
-        var loader = Ext.create('Rally.apps.portfolioitemcosttracking.RollupDataLoader',{
-            portfolioItemTypes: Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getPortfolioItemTypes(),
-            featureName: Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getFeatureName(),
+        var loader = Ext.create('CArABU.technicalservices.RollupDataLoader',{
+            portfolioItemTypes: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes(),
+            featureName: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName(),
             listeners: {
                 rollupdataloaded: function(portfolioHash, stories){
                     //onsole.log('rollupdataloaded', portfolioHash, stories);
-                    var rollupData = Ext.create('Rally.apps.portfolioitemcosttracking.RollupCalculator', {
+                    var rollupData = Ext.create('CArABU.technicalservices.RollupCalculator', {
                         portfolioItemType: rootModel
                     });
 
@@ -882,7 +400,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
         return;
     },
     _getAncestorTypeColumns: function(rootModel){
-        var piTypes = Rally.apps.portfolioitemcosttracking.PortfolioItemCostTrackingSettings.getPortfolioItemTypeObjects(),
+        var piTypes = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypeObjects(),
             piIdx = -1;
 
         Ext.Array.each(piTypes, function(piObj, idx){
@@ -925,6 +443,454 @@ Ext.define('CArABU.technicalservices.Exporter',{
             }
         });
         return deferred;
+    },
+    getCSVFromGrid:function(grid){
+
+        var store = grid.getStore();
+
+        var columns = grid.columns;
+        var column_names = [];
+        var headers = [];
+
+        var csv = [];
+        console.log('getCSVFromGrid', columns);
+        Ext.Array.each(columns,function(column){
+            if (column.xtype != 'rallyrowactioncolumn' && (column.dataIndex)) {
+                column_names.push(column.dataIndex);
+                headers.push(column.csvText || column.text || column.dataIndex);
+            }
+        });
+
+        csv.push('"' + headers.join('","') + '"');
+
+        var mock_meta_data = {
+            align: "right",
+            classes: [],
+            cellIndex: 9,
+            column: null,
+            columnIndex: 9,
+            innerCls: undefined,
+            recordIndex: 5,
+            rowIndex: 5,
+            style: "",
+            tdAttr: "",
+            tdCls: "x-grid-cell x-grid-td x-grid-cell-headerId-gridcolumn-1029 x-grid-cell-last x-unselectable",
+            unselectableAttr: "unselectable='on'"
+        }
+
+
+        Ext.Array.each(store.getRange(), function(record){
+            var node_values = [];
+            Ext.Array.each(columns,function(column){
+                if (column.xtype != 'rallyrowactioncolumn') {
+                    if (column.dataIndex) {
+                        var column_name = column.dataIndex;
+                        var display_value = record.get(column_name);
+
+                        if (!column._csvIgnoreRender && column.renderer) {
+                            if (column.exportRenderer) {
+                                display_value = column.exportRenderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                            } else {
+                                display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                            }
+                        }
+                        var val = display_value.replace(/\"/g,'\"\"');
+                        val = Ext.String.format("\"{0}\"",val);
+                        node_values.push(val);
+                    }
+                }
+            },this);
+            csv.push(node_values.join(','));
+        });
+        return csv.join("\r\n");
+    }
+
+});
+
+
+
+Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
+    singleton: true,
+    prefPrefix: 'costAsOf-',
+    build: function(modelType, newModelName) {
+        var deferred = Ext.create('Deft.Deferred');
+        var prefPrefix = CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix;
+
+        Rally.data.ModelFactory.getModel({
+            type: modelType,
+            success: function (model) {
+
+                var default_fields = [{
+                    name: '__cost',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.cost;
+                        }
+                    }
+                }, {
+                    name: '__userDisplayName',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj) {
+                            obj = Ext.JSON.decode(obj);
+                            return obj.userDisplayName;
+                        }
+                    }
+                }, {
+                    name: '__asOfDate',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj) {
+                            obj = Ext.JSON.decode(obj);
+                            return Rally.util.DateTime.fromIsoString(obj.asOfDate);
+                        }
+                    }
+                }];
+
+                var new_model = Ext.define(newModelName, {
+                    extend: model,
+                    logger: new Rally.technicalservices.Logger(),
+                    fields: default_fields,
+                    prefPrefix: prefPrefix,
+                    setCostForProject: function(cost, asOfDate, userName){
+                        var isoDate = Rally.util.DateTime.toIsoString(asOfDate),
+                            name = this.prefPrefix + isoDate;
+
+                        this.set('Name', name);
+
+                        var obj = {
+                            cost: cost,
+                            asOfDate: isoDate,
+                            userDisplayName: userName
+                        };
+                        this.logger.log('setCostPerProject', name, obj, cost, asOfDate, userName);
+
+                        this.set('Value', Ext.JSON.encode(obj));
+                    }
+                });
+                deferred.resolve(new_model);
+            }
+        });
+        return deferred;
+    }
+});
+(function() {
+    var Ext = window.Ext4 || window.Ext;
+
+    Ext.define('CArABU.technicalservices.RollupItem',{
+
+    _rollupDataPreliminaryBudget: undefined,
+    _rollupDataTotalCost: undefined,
+    _rollupDataActualCost: undefined,
+    _rollupDataRemainingCost: undefined,
+    _rollupDataToolTip: null,
+    _notEstimated: true,
+    children: undefined,
+
+    useBudgetCalc: false,
+
+    constructor: function(record) {
+        this._rollupDataTotalCost = 0;
+        this._rollupDataActualCost = 0;
+
+        this.parent = record.get('Parent') && record.get('Parent').ObjectID || null;
+        this.objectID = record.get('ObjectID');
+
+        this._rollupDataPreliminaryBudget = this._calculatePreliminaryBudget(record.getData());
+      //  this._rollupDataTotalCost = this.getPreliminaryBudget() || 0;
+        this._rollupDataToolTip = this.getTooltip();
+        this._rollupDataRemainingCost = this.getRemainingCostRollup();
+
+
+        Ext.apply(this, record.getData());
+    },
+    addChild: function(objectID){
+        if (!this.children){
+            this.children = [];
+        }
+        this.children.push(objectID);
+    },
+    getExportRow: function(columns, ancestors){
+        var rec = Ext.clone(ancestors);
+
+        rec[this._type] = this.FormattedID;
+
+        rec.type = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getTypePathDisplayName(this._type);
+        _.each(columns, function(c){
+            var field = c.costField || c.dataIndex || null;
+            if (field){
+                var data = this[field];
+                if (Ext.isObject(data)){
+                    rec[field] = data._refObjectName;
+                } else if (Ext.isDate(data)){
+                    rec[field] = Rally.util.DateTime.formatWithDefaultDateTime(data);
+                } else {
+                    rec[field] = data;
+                }
+            }
+        }, this);
+        return rec;
+    },
+    _calculatePreliminaryBudget: function(data){
+        var preliminaryBudgetField = CArABU.technicalservices.PortfolioItemCostTrackingSettings.preliminaryBudgetField;
+        if (data && data[preliminaryBudgetField]){
+            //We need to do this in case we are using hte PreliminaryEstimate field, which is an object
+            var val = data[preliminaryBudgetField].Value || data[preliminaryBudgetField];
+            var cpu = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref);
+            return cpu * val;
+        }
+        return null;
+    },
+    getTooltip: function(){
+
+        var completed  = CArABU.technicalservices.PortfolioItemCostTrackingSettings.notAvailableText;
+        if ((this.__actualUnits >= 0) && (this.__totalUnits >0 )){
+            completed = Ext.String.format("{0} of {1}", this.__actualUnits, this.__totalUnits);
+        }
+
+        var calc_type_name = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCalculationTypeDisplayName();
+
+        var html = Ext.String.format('{1} {0} Accepted<br/><br/>', calc_type_name, completed);
+
+        html += Ext.String.format("<b>Preliminary Budget</b><br/>Preliminary Budget Field Value * Current Team Cost<br/><br/>");
+
+        if (this.__totalUnits > 0){
+            html += Ext.String.format('<b>Actual Cost</b><br/>{0} * Team Cost on Accepted Date for Story(s)<br/><br/>', this.__actualUnits || 0);
+
+            if (this._notEstimated){
+                html += '<b>Remaining Cost</b><br/>Preliminary Budget - Actual Cost or 0 (whichever is greater)<br/><br/>';
+            } else {
+                html += Ext.String.format('<b>Remaining Cost</b><br/>({1} - {0}) * Current Team Cost<br/><br/>', this.__actualUnits, this.__totalUnits);
+            }
+            html += '<b>Total Projected</b><br/>Actual Cost + Remaining Cost<br/><br/>';
+        } else {
+            html += '<br/><p>Portfolio Item has missing ' + calc_type_name + '.  Preliminary Budget is being used to calculate Projected and Remaining costs.</p>';
+        }
+        return html;
+    },
+    getTotalCostRollup: function(){
+        //With this new version, this should always be Actual + Remaining
+        //if (this._notEstimated){
+            return this.getActualCostRollup() + this.getRemainingCostRollup();
+        //}
+        //return this._rollupDataTotalCost;
+    },
+    getActualCostRollup: function(){
+        return this._rollupDataActualCost;
+    },
+    getRemainingCostRollup: function(){
+        if (this._notEstimated){
+            return Math.max(this.getPreliminaryBudget() || 0 - this.getActualCostRollup(), 0);
+        }
+        return this._rollupDataRemainingCost;
+    },
+    getPreliminaryBudget: function(){
+        return this._rollupDataPreliminaryBudget;
+    }
+});
+})();
+Ext.define('CArABU.technicalservices.LowestLevelPortfolioRollupItem',{
+    extend: 'CArABU.technicalservices.RollupItem',
+
+    processChildren: function(){
+
+        this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
+        this._rollupDataActualCost = 0;
+        this._rollupDataRemainingCost = 0;
+        this.__totalUnits = 0;
+        this.__actualUnits = 0;
+        var notEstimated = (!this.children || this.children.length === 0) ;
+
+        Ext.Array.each(this.children, function(child){
+            this.__totalUnits += child.__totalUnits || 0;
+            this.__actualUnits += child.__actualUnits || 0;
+            this._rollupDataActualCost += child._rollupDataActualCost;
+            this._rollupDataRemainingCost += child._rollupDataRemainingCost;
+            notEstimated = notEstimated && child._notEstimated;
+        }, this);
+        this._notEstimated = notEstimated;
+
+        this._rollupDataToolTip = this.getTooltip();
+
+        if (this._notEstimated && this.getPreliminaryBudget() > this.getActualCostRollup()){
+            this._rollupDataRemainingCost = this.getPreliminaryBudget() - this.getActualCostRollup();
+        }
+        //This should always be actual + remaining...
+        this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;
+    },
+    addChild: function(child){
+        if (!this.children){
+            this.children = [];
+            this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
+            this._rollupDataActualCost = 0;
+            this._rollupDataRemainingCost = 0;
+            this.__totalUnits = 0;
+            this.__actualUnits = 0;
+
+        }
+        this.children.push(child);
+
+    }
+});
+Ext.define('CArABU.technicalservices.UpperLevelPortfolioRollupItem',{
+    extend: 'CArABU.technicalservices.RollupItem',
+
+
+    processChildren: function(){
+
+        if (this.children && this.children.length > 0){
+            var rollupDataTotal = 0,
+                rollupDataActual = 0,
+                rollupDataRemaining = 0,
+                totalUnitsSum = 0,
+                actualUnitsSum = 0,
+                rollupItems = this.children || [],
+                notEstimated = true,
+                preliminaryBudget = 0;
+
+
+            for (var i=0; i<rollupItems.length; i++){
+                var item = rollupItems[i];
+                item.processChildren();
+                preliminaryBudget += item._rollupDataPreliminaryBudget;
+                rollupDataTotal += item.getTotalCostRollup() ;
+                rollupDataActual +=  item.getActualCostRollup();
+                rollupDataRemaining += item.getRemainingCostRollup();
+                totalUnitsSum += item.__totalUnits || 0;
+                actualUnitsSum += item.__actualUnits || 0;
+                notEstimated = notEstimated && item._notEstimated;
+            }
+
+            this._rollupDataPreliminaryBudget = preliminaryBudget;
+            this._notEstimated = notEstimated;
+            this._rollupDataTotalCost = rollupDataTotal;
+            this._rollupDataActualCost = rollupDataActual;
+            this._rollupDataRemainingCost = rollupDataRemaining;
+            this.__totalUnits = totalUnitsSum;
+            this.__actualUnits = actualUnitsSum;
+            this._rollupDataToolTip = this.getTooltip();
+        }
+    }
+});
+
+Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
+    extend: 'CArABU.technicalservices.RollupItem',
+    constructor: function(record, totalFn, actualFn) {
+
+        var data = record.data;
+        if (record.getData && record.getData()){
+            data = record.getData();
+        }
+
+        if (data){
+            this.__totalUnits = totalFn(data);
+            this.__actualUnits = actualFn(data);
+            this._notEstimated = false;
+            var costPerUnit =CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref),
+                acceptedCostPerUnit = costPerUnit;
+
+            if (data.AcceptedDate){
+                acceptedCostPerUnit = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref, data.AcceptedDate);
+            }
+
+            this._rollupDataActualCost = (this.__actualUnits * acceptedCostPerUnit) || 0;
+            this._rollupDataRemainingCost = Math.max((this.__totalUnits - this.__actualUnits),0) * costPerUnit;
+            this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;
+            //this._rollupDataRemainingCost = this._rollupDataTotalCost - this._rollupDataActualCost;
+            //this._rollupDataTotalCost = (this.__totalUnits * costPerUnit) || 0;
+
+            this.parent = record.get('PortfolioItem') && record.get('PortfolioItem').ObjectID || record.get('Parent') && record.get('Parent').ObjectID || null;
+
+            this.objectID = data.ObjectID;
+
+            this._rollupDataPreliminaryBudget = null;
+            this._rollupDataToolTip = null;
+
+            Ext.apply(this, data);
+            this._buildToolTip();
+        }
+    },
+    addChild: function(child){
+        if (!this.children){
+            this.children = [];
+            this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
+            this._rollupDataActualCost = 0;
+            this._rollupDataRemainingCost = 0;
+            this.__totalUnits = 0;
+            this.__actualUnits = 0;
+        }
+        this.children.push(child);
+
+        this.__totalUnits += child.__totalUnits || 0;
+        this.__actualUnits += child.__actualUnits || 0;
+
+        this._notEstimated = (this.__totalUnits === 0);
+
+        this._rollupDataActualCost += child._rollupDataActualCost;
+        this._rollupDataTotalCost += child._rollupDataTotalCost;
+        this._rollupDataRemainingCost += child._rollupDataRemainingCost;
+        this._buildToolTip();
+    },
+    _buildToolTip: function(){
+        if (this.__totalUnits > 0){
+            var acceptedDate = "Accepted Date";
+            if (this.AcceptedDate){
+                acceptedDate = Rally.util.DateTime.format(this.AcceptedDate,'Y-m-d');
+            }
+            this._rollupDataToolTip = Ext.String.format('<b>Actual (Accepted) Units:</b> {0}<br/>' +
+                                                        '<b>Total Units: </b> {2}<br/><br/>' +
+                                                        '<b>Actual Cost</b><br/>{0} Accepted * Team Cost on {1}<br/><br/>' +
+                                                        '<b>Remaining Cost</b><br/>({2} Total - {0} Accepted) * Current Team Cost<br/><br/>' +
+                                                        '<b>Total Projected</b><br/>Actual Cost + Remaining Cost', this.__actualUnits, acceptedDate, this.__totalUnits);
+        }
+    }
+});
+
+
+Ext.define('CArABU.technicalservices.CostTemplateColumn', {
+    extend: 'Ext.grid.column.Template',
+    alias: ['widget.costtemplatecolumn'],
+
+    align: 'right',
+
+    initComponent: function(){
+        var me = this;
+
+        Ext.QuickTips.init();
+
+        me.tpl = new Ext.XTemplate('<tpl><div data-qtip="{[this.getTooltip(values)]}" style="cursor:pointer;text-align:right;">{[this.getCost(values)]}</div></tpl>',{
+            costField: me.costField,
+
+            getCost: function(values){
+                if (values[this.costField] === null){
+                    return CArABU.technicalservices.PortfolioItemCostTrackingSettings.notAvailableText;
+                } else {
+                    var html = CArABU.technicalservices.PortfolioItemCostTrackingSettings.formatCost(values[this.costField] || 0);
+                    if (values._notEstimated && this.costField === '_rollupDataTotalCost'){
+                        html = '<span class="picto icon-warning warning" style="color:#FAD200;font-size:10px;"></span>' + html;
+                    }
+                    return html;
+                }
+            },
+            getTooltip: function(values){
+                if (values._rollupDataToolTip){
+                    return values._rollupDataToolTip;
+                }
+                return '';
+            }
+
+        });
+        me.hasCustomRenderer = true;
+        me.callParent(arguments);
+    },
+    getValue: function(){
+        return values[this.costField] || 0;
+    },
+    defaultRenderer: function(value, meta, record) {
+        var data = Ext.apply({}, record.data._rollupData); //, record.getAssociatedData());
+        return this.tpl.apply(data);
     }
 });
 
@@ -940,7 +906,7 @@ Ext.define('CArABU.technicalservices.NumberFieldComboBox', {
     alias: 'widget.numberfieldcombobox',
     _isNotHidden: function(field) {
         var validFields= ['PreliminaryEstimate','RefinedEstimate'],
-            allowCustomNumberFields = false;
+            allowCustomNumberFields = true;
 
         if (!field.hidden) {
 
@@ -974,15 +940,11 @@ Ext.override(Rally.ui.grid.TreeGrid, {
         mergedColumns = mergedColumns.concat(this.config.derivedColumns);
         return mergedColumns;
     },
-    _getPersistableColumnConfig: function(column) {
-
-        var columnConfig = this._getColumnConfigFromColumn(column),
-            field = this._getModelField(columnConfig.dataIndex);
-
-        if (field && field.getUUID && field.getUUID()) {
-            columnConfig.dataIndex = field.getUUID();
-        }
-        return columnConfig;
+    _getColumnConfigsBasedOnCurrentOrder: function(columnConfigs) {
+         return _(this.headerCt.items.getRange()).map(function(column) {
+             //override:  Added additional search for column.text
+            return _.contains(columnConfigs, column.dataIndex) ? column.dataIndex : _.find(columnConfigs, {dataIndex: column.dataIndex, text: column.text});
+        }).compact().value();
     }
 });
 
@@ -1025,795 +987,11 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
     }
 });
 
-
-Ext.define('TreeGridContainerCustomFilterControl', {
-    alias: 'plugin.treegridcontainercustomfiltercontrol',
-    extend:'Rally.ui.gridboard.plugin.GridBoardCustomFilterControl',
-
-    showControl: function() {
-        if (!this.controlCmp) {
-            this._createControlCmp();
-        }
-
-        if (this.controlCmp) {
-            this.controlCmp.show();
-        }
-
-        return this.controlCmp;
-    }
-});
-
-Ext.define('TreeGridContainerFieldPicker', {
-    alias: 'plugin.treegridcontainerfieldpicker',
-    extend:'Ext.AbstractPlugin',
-    mixins: ['Rally.ui.gridboard.plugin.GridBoardControlShowable'],
-    requires: [
-        'Rally.ui.popover.Popover',
-        'Rally.ui.Button',
-        'Rally.ui.picker.FieldPicker'
-    ],
-
-    /**
-     * @cfg {String[]} alwaysSelectedFields
-     * The fields that will be always selected in the field picker for the grid view
-     */
-    gridAlwaysSelectedValues: ['FormattedID', 'Name'], // DragAndDropRank gets added in init if Drag and Drop is enabled for the workspace in the component's context
-
-    /**
-     * @cfg {String[]} gridFieldBlackList
-     * The fields that will be blacklisted in grid mode
-     */
-    gridFieldBlackList: [
-        'Actuals',
-        'Changesets',
-        'Children',
-        'Description',
-        'Notes',
-        'ObjectID',
-        'Predecessors',
-        'RevisionHistory',
-        'Subscription',
-        'Successors',
-        'TaskIndex',
-        'Workspace',
-        'VersionId'
-    ],
-
-    /**
-     * @cfg {String[]}
-     * the names of the models displayed on the board.
-     */
-    modelNames: [],
-
-    stateful: true,
-
-    margin: '3 9 10 10',
-
-    constructor: function (config) {
-        config.gridFieldBlackList = _.union(this.gridFieldBlackList, config.gridFieldBlackList);
-        config.gridAlwaysSelectedValues = _.union(this.gridAlwaysSelectedValues, config.gridAlwaysSelectedValues);
-        this.callParent(arguments);
-    },
-
-    init: function(cmp) {
-        this.callParent(arguments);
-        this.cmp = cmp;
-
-        var rankingEnabled = this.cmp.getContext().getWorkspace().WorkspaceConfiguration.DragDropRankingEnabled && cmp.gridConfig.enableRanking !== false;
-
-        this.gridAlwaysSelectedValues = this._modifyFieldCollection(this.gridAlwaysSelectedValues, ['DragAndDropRank'], rankingEnabled);
-        this.gridFieldBlackList = this._modifyFieldCollection(this.gridFieldBlackList, ['DragAndDropRank'], !rankingEnabled);
-        this.stateId = this.stateId || this.cmp.getFieldListStateId();
-
-        var state = Ext.state.Manager.get(this.stateId);
-        this._fields = state && state.fields;
-
-        this.showControl();
-    },
-    showControl: function() {
-        if (!this.controlCmp) {
-            this._createControlCmp();
-        }
-
-        if (this.controlCmp) {
-            this.controlCmp.show();
-        }
-
-        return this.controlCmp;
-    },
-    _modifyFieldCollection: function (collection, fields, include) {
-        if (include) {
-            return _.union(collection, fields);
-        }
-        return _.reject(collection, function (field) { return _.contains(fields, field); });
-    },
-
-    getControlCmpConfig: function() {
-        return {
-            xtype: "rallybutton",
-            itemId: 'fieldpickerbtn',
-            cls: 'field-picker-btn secondary rly-small',
-            margin: this.margin,
-            iconCls: 'icon-add-column',
-            toolTipConfig: {
-                html: this.getTitle(),
-                anchor: 'top'
-            },
-            listeners: {
-                click: this._onClick,
-                scope: this
-            }
-        };
-    },
-
-    _onClick: function(btn) {
-        this._createPopover(btn.getEl());
-    },
-
-    _getPickerConfig: function() {
-        var pickerConfig;
-
-        pickerConfig = _.extend({
-            value: _.pluck(this.cmp.getGrid().columns, 'dataIndex').join(','),
-            fieldBlackList: this.gridFieldBlackList,
-            alwaysSelectedValues: this.gridAlwaysSelectedValues
-        }, this.fieldPickerConfig);
-
-        return pickerConfig;
-    },
-
-    _createPopover: function(popoverTarget) {
-        this.popover = Ext.create('Rally.ui.popover.Popover', {
-            target: popoverTarget,
-            placement: ['bottom', 'left', 'top', 'right'],
-            cls: 'field-picker-popover',
-            toFront: Ext.emptyFn,
-            buttonAlign: 'center',
-            title: this.getTitle(),
-            listeners: {
-                destroy: function () {
-                    this.popover = null;
-                },
-                scope: this
-            },
-            buttons: [
-                {
-                    xtype: "rallybutton",
-                    text: 'Apply',
-                    cls: 'field-picker-apply-btn primary rly-small',
-                    listeners: {
-                        click: function() {
-                            this._onApply(this.popover);
-                        },
-                        scope: this
-                    }
-                },
-                {
-                    xtype: "rallybutton",
-                    text: 'Cancel',
-                    cls: 'field-picker-cancel-btn secondary dark rly-small',
-                    listeners: {
-                        click: function() {
-                            this.popover.close();
-                        },
-                        scope: this
-                    }
-                }
-            ],
-            items: [
-                _.extend({
-                    xtype: 'rallyfieldpicker',
-                    cls: 'field-picker',
-                    itemId: 'fieldpicker',
-                    modelTypes: this._getModelTypes(),
-                    alwaysExpanded: true,
-                    width: 200,
-                    placeholderText: 'Search',
-                    selectedTextLabel: 'Selected',
-                    availableTextLabel: 'Available',
-                    listeners: {
-                        specialkey: function(field, e) {
-                            if (e.getKey() === e.ESC) {
-                                this.popover.close();
-                            }
-                        },
-                        scope: this
-                    }
-                }, this._getPickerConfig())
-            ]
-        });
-    },
-
-    _getModelTypes: function() {
-        return _.pluck(this._getModels(), 'typePath');
-    },
-
-    _getModels: function() {
-        return _.reduce(this.cmp.getModels(), function(accum, model) {
-            if (model.typePath === 'artifact') {
-                accum = accum.concat(model.getArtifactComponentModels());
-            } else {
-                accum.push(model);
-            }
-            return accum;
-        }, []);
-    },
-
-
-    getTitle: function () {
-        return 'Show Columns';
-    },
-
-    /**
-     * Update the fields displayed. In grid mode this will be the columns displayed. In board mode it will be
-     * the fields on the cards
-     *
-     * @param {String[]|Object[]} fields A list of field names to display
-     * @param {Boolean} true to suspend store load if it will be triggered elsewhere
-     */
-    updateFields: function (fields, suspendLoad) {
-        this._fields = _.map(fields, function (field) {
-            return field.get('name');
-        });
-
-        this.cmp.updateFields(this._fields, false, suspendLoad);
-
-        this._updatePickerValue(this._fields);
-
-    },
-
-    _updatePickerValue: function(fields) {
-        if (this.popover && this.popover.down('rallyfieldpicker')) {
-            this.popover.down('rallyfieldpicker').setValue(this._fields.join(','));
-        }
-    },
-
-    _onApply: function(popover) {
-        var fieldPicker = popover.down('rallyfieldpicker');
-
-        this.updateFields(fieldPicker.getValue());
-
-        popover.close();
-    }
-});
-
-
-
-Ext.define('CArABU.technicalservices.ProjectPickerDialog', {
-    extend: 'Rally.ui.dialog.Dialog',
-    alias: 'widget.projectpickerdialog',
-
-
-    height: 400,
-    width: 400,
-    layout: 'fit',
-    closable: true,
-    draggable: true,
-
-    config: {
-        /**
-         * @cfg {String}
-         * Title to give to the dialog
-         */
-        title: 'Choose an Item',
-
-        /**
-         * @cfg {Boolean}
-         * Allow multiple selection or not
-         */
-        multiple: true,
-
-        /**
-         * @cfg {Object}
-         * An {Ext.data.Store} config object used when building the grid
-         * Handy when you need to limit the selection with store filters
-         */
-        storeConfig: {
-            context: {
-                project: null
-            },
-            sorters: [
-                {
-                    property: 'FormattedID',
-                    direction: 'DESC'
-                }
-            ]
-        },
-
-        /**
-         * @cfg {Ext.grid.Column}
-         * List of columns that will be used in the chooser
-         */
-        columns: [
-            {
-                text: 'ID',
-                dataIndex: 'ObjectID',
-                renderer: _.identity
-            },
-            'Name'
-        ],
-
-        /**
-         * @cfg {String}
-         * Text to be displayed on the button when selection is complete
-         */
-        selectionButtonText: 'Done',
-
-        /**
-         * @cfg {Object}
-         * The grid configuration to be used when creative the grid of items in the dialog
-         */
-        gridConfig: {},
-
-        /**
-         * @deprecated
-         * @cfg {String}
-         * The ref of a record to select when the chooser loads
-         * Use selectedRecords instead
-         */
-        selectedRef: undefined,
-
-        /**
-         * @cfg {String}|{String[]}
-         * The ref(s) of items which should be selected when the chooser loads
-         */
-        selectedRecords: undefined,
-
-        /**
-         * @cfg {Array}
-         * The records to select when the chooser loads
-         */
-        initialSelectedRecords: undefined,
-
-        /**
-         * @private
-         * @cfg userAction {String} (Optional)
-         * The client metrics action to record when the user makes a selection and clicks done
-         */
-
-        /**
-         * @cfg showRadioButtons {Boolean}
-         */
-        showRadioButtons: true
-    },
-
-    constructor: function(config) {
-        this.mergeConfig(config);
-
-        this.callParent([this.config]);
-    },
-
-    selectionCache: [],
-
-    initComponent: function() {
-        this.callParent(arguments);
-
-        this.addEvents(
-            /**
-             * @event artifactchosen
-             * Fires when user clicks done after choosing an artifact
-             * @param {Rally.ui.dialog.ArtifactChooserDialog} source the dialog
-             * @param {Rally.data.wsapi.Model}| {Rally.data.wsapi.Model[]} selection selected record or an array of selected records if multiple is true
-             */
-            'itemschosen'
-        );
-
-        this.addCls(['chooserDialog', 'chooser-dialog']);
-    },
-
-    destroy: function() {
-        //      this._destroyTooltip();
-        this.callParent(arguments);
-    },
-
-    beforeRender: function() {
-        this.callParent(arguments);
-
-        this.addDocked({
-            xtype: 'toolbar',
-            dock: 'bottom',
-            padding: '0 0 10 0',
-            layout: {
-                type: 'hbox',
-                pack: 'center'
-            },
-            ui: 'footer',
-            items: [
-                {
-                    xtype: 'rallybutton',
-                    itemId: 'doneButton',
-                    text: this.selectionButtonText,
-                    cls: 'primary rly-small',
-                    scope: this,
-                    disabled: true,
-                    userAction: 'clicked done in dialog',
-                    handler: function() {
-                        this.fireEvent('itemschosen', this.getSelectedRecords());
-                        this.close();
-                    }
-                },
-                {
-                    xtype: 'rallybutton',
-                    text: 'Cancel',
-                    cls: 'secondary rly-small',
-                    handler: this.close,
-                    scope: this,
-                    ui: 'link'
-                }
-            ]
-        });
-
-        if (this.introText) {
-            this.addDocked({
-                xtype: 'component',
-                componentCls: 'intro-panel',
-                html: this.introText
-            });
-        }
-
-        this.addDocked({
-            xtype: 'toolbar',
-            itemId: 'searchBar',
-            dock: 'top',
-            border: false,
-            padding: '0 0 10px 0',
-            items: this.getSearchBarItems()
-        });
-
-        this.buildGrid();
-
-        this.selectionCache = this.getInitialSelectedRecords() || [];
-    },
-
-    /**
-     * Get the records currently selected in the dialog
-     * {Rally.data.Model}|{Rally.data.Model[]}
-     */
-    getSelectedRecords: function() {
-        return this.multiple ? this.selectionCache : this.selectionCache[0];
-    },
-
-    getSearchBarItems: function() {
-        return [
-            {
-                xtype: 'triggerfield',
-                cls: 'rui-triggerfield chooser-search-terms',
-                emptyText: 'Search Keyword or ID',
-                enableKeyEvents: true,
-                flex: 1,
-                itemId: 'searchTerms',
-                listeners: {
-                    keyup: function (textField, event) {
-                        if (event.getKey() === Ext.EventObject.ENTER) {
-                            this._search();
-                        }
-                    },
-                    afterrender: function (field) {
-                        field.focus();
-                    },
-                    scope: this
-                },
-                triggerBaseCls: 'icon-search chooser-search-icon'
-            }
-        ];
-    },
-    getStoreFilters: function() {
-        return [];
-    },
-    _buildTreeStore: function(){
-        return Ext.create('Rally.data.wsapi.ProjectTreeStoreBuilder').build({
-            models: ['project'],
-            autoLoad: true,
-            enableHierarchy: true,
-            filters: [{
-                property: 'Parent',
-                value: ""
-            }]
-        });
-    },
-    buildGrid: function() {
-        if (this.grid) {
-            this.grid.destroy();
-        }
-
-        this._buildTreeStore().then({
-            success: function(store){
-                var mode = this.multiple ? 'MULTI' : 'SINGLE';
-
-                var checkbox_model = Ext.create('Rally.ui.selection.CheckboxModel', {
-                    mode: mode,
-                    enableKeyNav: false,
-                    allowDeselect: true
-                });
-
-                this.grid = this.add({
-                    xtype: 'rallytreegrid',
-                    treeColumnDataIndex: 'Name',
-                    treeColumnHeader: 'Name',
-                    viewConfig: {
-                        cls: 'grid-view-bulk-edit'
-                    },
-                    enableRanking: false,
-                    enableEditing: false,
-                    enableBulkEdit: false,
-                    shouldShowRowActionsColumn: false,
-                    showRowActionsColumn: false,
-                    selModel: checkbox_model,
-                    _defaultTreeColumnRenderer: function (value, metaData, record, rowIdx, colIdx, store) {
-                        store = store.treeStore || store;
-                        return Rally.ui.renderer.RendererFactory.getRenderTemplate(store.model.getField('Name')).apply(record.data);
-                    },
-                    columnCfgs: [],
-                    store: store
-                });
-
-                this.mon(this.grid, {
-                    beforeselect: this._onGridSelect,
-                    beforedeselect: this._onGridDeselect,
-                    load: this._onGridLoad,
-                    scope: this
-                });
-                this.add(this.grid);
-                this._onGridReady();
-            },
-            failure: function(msg){},
-            scope: this
-        });
-
-    },
-
-    _enableDoneButton: function() {
-        this.down('#doneButton').setDisabled(this.selectionCache.length ? false : true);
-    },
-
-    _findRecordInSelectionCache: function(record){
-        return _.findIndex(this.selectionCache, function(cachedRecord) {
-            return cachedRecord.get('_ref') === record.get('_ref');
-        });
-    },
-
-    _onGridSelect: function(selectionModel, record) {
-        var index = this._findRecordInSelectionCache(record);
-
-        if (index === -1) {
-            if (!this.multiple) {
-                this.selectionCache = [];
-            }
-            this.selectionCache.push(record);
-        }
-
-        this._enableDoneButton();
-    },
-
-    _onGridDeselect: function(selectionModel, record) {
-        var index = this._findRecordInSelectionCache(record);
-        if (index !== -1) {
-            this.selectionCache.splice(index, 1);
-        }
-        this._enableDoneButton();
-    },
-
-    _onGridReady: function() {
-        if (!this.grid.rendered) {
-            this.mon(this.grid, 'afterrender', this._onGridReady, this, {single: true});
-            return;
-        }
-
-        if (this.grid.getStore().isLoading()) {
-            this.mon(this.grid, 'load', this._onGridReady, this, {single: true});
-            return;
-        }
-
-        this._onGridLoad();
-        this.center();
-    },
-    _onGridLoad: function() {
-        var store = this.grid.store;
-        var records = [];
-        _.each(this.selectionCache, function(record) {
-            var foundNode = store.getRootNode().findChild('_ref', record.get('_ref'),true);
-
-            if (foundNode) {
-                records.push(foundNode);
-            }
-        });
-        if (records.length) {
-            this.grid.getSelectionModel().select(records);
-        }
-    },
-    _search: function() {
-        var terms = this._getSearchTerms();
-        var store = this.grid.getStore();
-        //Filter functions call store load so we don't need to refresh the selections becuaes the
-        //onGridLoad function will
-        if (terms) {
-            store.filter([
-                Ext.create('Rally.data.wsapi.Filter',{
-                    property: 'Name',
-                    operator: 'contains',
-                    value: terms
-                })
-            ]);
-        } else {
-            store.clearFilter();
-        }
-
-    },
-    _getSearchTerms: function() {
-        var textBox = this.down('#searchTerms');
-        return textBox && textBox.getValue();
-    }
-});
-
-Ext.override(Rally.data.wsapi.ParentChildMapper, {
-    constructor: function() {
-        this.parentChildTypeMap = {
-            project: [{
-                typePath: 'project', collectionName: 'Children', parentField: 'Parent'
-            }],
-            hierarchicalrequirement: [
-                {typePath: 'defect', collectionName: 'Defects', parentField: 'Requirement'},
-                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
-                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'},
-                {typePath: 'hierarchicalrequirement', collectionName: 'Children', parentField: 'Parent'}
-            ],
-            defect: [
-                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
-                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
-            ],
-            defectsuite: [
-                {typePath: 'defect', collectionName: 'Defects', parentField: 'DefectSuites'},
-                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
-                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
-            ],
-            testset: [
-                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
-                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'TestSets'}
-            ]
-        };
-    }
-});
-
-
-Ext.define('Rally.data.wsapi.ProjectTreeStore', {
-
-    // Client Metrics Note: WsapiTreeStore is too low level to record its load begins/ends. The problem is
-    // client metrics can only reliably keep track of one load per component at a time. WsapiTreeStore makes
-    // no guarantee that only one load will happen at a time. It's better to measure the component that is using
-    // the store. All is not lost, the actual data requests that WsapiTreeStore makes *are* measured by client metrics.
-
-    requires: [
-        'Deft.promise.Deferred',
-        'Rally.data.ModelFactory',
-        'Rally.ui.grid.data.NodeInterface',
-        'Rally.data.ModelTypes',
-        'Rally.data.wsapi.ParentChildMapper'
-    ],
-    extend: 'Rally.data.wsapi.TreeStore',
-    alias: 'store.rallyprojectwsapitreestore',
-
-    /**
-     * The type definition typePaths to render as root items (required)
-     * @cfg {String[]} parentTypes
-     */
-    parentTypes: ['project'],
-
-    /**
-     * @property
-     * @private
-     */
-    childLevelSorters: [{
-        property: 'Name',
-        direction: 'ASC'
-    }],
-
-    getParentFieldNamesByChildType: function(childType, parentType) {
-        var model = this.model; //.getArtifactComponentModel(childType);
-        return _.transform(this.mapper.getParentFields(childType, parentType), function(acc, field) {
-            var fieldName = field.fieldName,
-                hasFieldModel = model.hasField(fieldName);
-
-            if (hasFieldModel) {
-                acc.push(fieldName.replace(/\s+/g, ''));
-            }
-        }, [], this);
-    },
-
-    filter: function(filters) {
-        this.fireEvent('beforefilter', this);
-        //We need to clear the filters to remove the Parent filter
-        this.filters.clear();
-        this.filters.addAll(filters);
-        this._resetCurrentPage();
-        this.load();
-    },
-
-    clearFilter: function(suppressEvent) {
-        this._resetCurrentPage();
-        this.filters.clear();
-        //We need to add the parent filter back in
-        this.filters.addAll(Ext.create('Rally.data.wsapi.Filter',{
-            property: 'Parent',
-            value: ''
-        }));
-
-        if (!suppressEvent) {
-            this.load();
-        }
-    },
-
-    load: function(options) {
-        this.recordLoadBegin({description: 'tree store load', component: this.requester});
-
-        this._hasErrors = false;
-
-        this.on('beforeload', function(store, operation) {
-            delete operation.id;
-        }, this, { single: true });
-
-        options = this._configureLoad(options);
-        options.originalCallback = options.callback;
-        var deferred = Ext.create('Deft.Deferred'),
-            me = this;
-
-        options.callback = function (records, operation, success) {
-            me.dataLoaded = true;
-
-            if(me.isRootNode(options.node) && operation.resultSet && operation.resultSet.sums) {
-                me.setSums(operation.resultSet.sums);
-            }
-
-            if (me._pageIsEmpty(operation)) {
-                me._reloadEmptyPage(options).then({
-                    success: function (records) {
-                        me._resolveLoadingRecords(deferred, records, options, operation, success);
-                    },
-                    failure: function() {
-                        me._rejectLoadingRecord(deferred, options, operation);
-                    }
-                });
-            } else {
-                me._resolveLoadingRecords(deferred, records, options, operation, success);
-            }
-        };
-
-        if (this._isViewReady()) {
-            this._beforeInitialLoad(options);
-        }
-
-        this.callParent([options]);
-
-        return deferred.promise;
-    }
-
-});
-
-Ext.define('Rally.data.wsapi.ProjectTreeStoreBuilder', {
-    extend: 'Rally.data.wsapi.TreeStoreBuilder',
-
-    build: function(config) {
-        //A context needs to be passed in here, and it NEEDS to be a DataContext (context.getDataContext())
-        //otherwise you will get a bunch of garbage on your WSAPI request
-
-        config = _.clone(config || {});
-        config.storeType = 'Rally.data.wsapi.ProjectTreeStore';
-
-        return this.loadModels(config).then({
-            success: function(models) {
-                models = _.values(models);
-                return this._buildStoreWithModels(models, config);
-            },
-            scope: this
-        });
-    }
-});
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
     Ext.define('CArABU.technicalservices.RollupCalculator', {
         extend: 'Ext.Base',
-
-
 
         mixins: {
             observable: 'Ext.util.Observable'
@@ -1825,6 +1003,7 @@ Ext.define('Rally.data.wsapi.ProjectTreeStoreBuilder', {
             this.mixins.observable.constructor.call(this, config);
             this.rollupItems = {};
             this.portfolioItemType = config.portfolioItemType;
+            this.projectCostDate = config.projectCostDate || new Date();
         },
         addRollupRecords: function(portfolioItemRecordHash, stories){
             var portfolioItemTypes = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes();
@@ -1837,7 +1016,6 @@ Ext.define('Rally.data.wsapi.ProjectTreeStoreBuilder', {
 
             this._addStories(stories);
             this._calculatePortfolioItemRollups();
-
         },
         getRollupData: function(record){
             if (!record){
@@ -1858,7 +1036,7 @@ Ext.define('Rally.data.wsapi.ProjectTreeStoreBuilder', {
             var type = records[0].get('_type').toLowerCase(),
                 rollupItemType = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getRollupItemType(type),
                 rootPortfolioItem = this.portfolioItemType.toLowerCase();
-            console.log('rollupItemType', rollupItemType);
+
             if (rollupItemType){ //this is a portfolio item type
                 for (var i=0; i<records.length; i++){
                     var r = records[i],
@@ -1895,6 +1073,7 @@ Ext.define('Rally.data.wsapi.ProjectTreeStoreBuilder', {
                     this.rollupItems[item.parent].addChild(item);
                 }
             }
+
         },
 
         _calculatePortfolioItemRollups: function(){
@@ -2243,7 +1422,7 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
     currencyEnd: false,
 
     normalizedCostPerUnit: 1,
-    projectCostPerUnit: {},
+
 
     preliminaryBudgetField: 'PreliminaryEstimate',
     /**
@@ -2260,8 +1439,8 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             key: 'points',
             label: 'Based on Story Points',
             displayName: 'Story Points',
-            defaultColumns: ['Name', 'Project', 'PlanEstimate', 'LeafStoryPlanEstimateTotal','AcceptedLeafStoryPlanEstimateTotal'],
-            requiredStoryFetch: ['ScheduleState','PortfolioItem','PlanEstimate'],
+            defaultColumns: ['Name', 'Project', 'PlanEstimate', 'LeafStoryPlanEstimateTotal','AcceptedLeafStoryPlanEstimateTotal','AcceptedDate'],
+            requiredStoryFetch: ['ScheduleState','PortfolioItem','PlanEstimate','AcceptedDate'],
             requiredTaskFetch: [],
             tooltips: {
                 _rollupDataActualCost: 'Actual Cost is the sum of the Accepted Story Plan Estimates <i>for all stories in scope</i> * Cost Per Unit for the project that the top level story resides in.',
@@ -2284,7 +1463,7 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             displayName: 'Task Actuals',
             label: 'Based on Task Actuals',
             defaultColumns: ['Name','Project'],
-            requiredStoryFetch: ['ScheduleState','PortfolioItem','TaskEstimateTotal','TaskActualTotal','TaskRemainingTotal'],
+            requiredStoryFetch: ['ScheduleState','PortfolioItem','TaskEstimateTotal','TaskActualTotal','TaskRemainingTotal','AcceptedDate'],
             requiredTaskFetch: ['ToDo','Actuals'],
             tooltips: {
                 _rollupDataActualCost: 'Actual Cost is the sum of the Task Actuals <i>for all stories in scope</i> * Cost Per Unit for the project that the top level story resides in.',
@@ -2302,19 +1481,19 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             totalUnitsForTaskFn: function(data){
                 return (data && data.ToDo || 0) + (data && data.Actuals || 0);
             }
-        },
-        timesheets: {
-            key: 'timesheets',
-            displayName: 'Time Spent',
-            label: 'Based on Timesheets',
-            defaultColumns: ['Name','Project'],
-            requiredStoryFetch: [],
-            requiredTaskFetch: [],
-            disabled: true,
-            actualUnitsForStoryFn: function(data){ return 0; },
-            actualUnitsForTaskFn: function(data){ return 0; },
-            totalUnitsForStoryFn: function(data){  return 0; },
-            totalUnitsForTaskFn: function(data){  return 0; }
+        //},
+        //timesheets: {
+        //    key: 'timesheets',
+        //    displayName: 'Time Spent',
+        //    label: 'Based on Timesheets',
+        //    defaultColumns: ['Name','Project'],
+        //    requiredStoryFetch: [],
+        //    requiredTaskFetch: [],
+        //    disabled: true,
+        //    actualUnitsForStoryFn: function(data){ return 0; },
+        //    actualUnitsForTaskFn: function(data){ return 0; },
+        //    totalUnitsForStoryFn: function(data){  return 0; },
+        //    totalUnitsForTaskFn: function(data){  return 0; }
         }
     },
 
@@ -2345,6 +1524,59 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
         return settings.tooltips[field] || null;
 
     },
+    /**
+     * setProjectCostHistory
+     * @param projectCostHistoryRecords
+     */
+    projectCostPerUnit: {},
+    projectCostDate: undefined,
+
+    setProjectCostHistory: function(projectCostHistoryRecords){
+
+        var hash = {};
+        Ext.Array.each(projectCostHistoryRecords, function(r){
+            var projectRef = r.get('Project') && r.get('Project')._ref;
+            if (projectRef){
+                if (!hash[projectRef]){
+                    hash[projectRef] = [];
+                }
+                hash[projectRef].push(r.getData());
+            }
+        });
+
+        CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit = hash;
+        console.log('setProjectCostHistory',CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit)
+    },
+    getCostPerUnit: function(project_ref, asOfDate){
+
+        var projectCostHistory = CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit[project_ref];
+        if (!projectCostHistory || projectCostHistory.length === 0){
+            return CArABU.technicalservices.PortfolioItemCostTrackingSettings.normalizedCostPerUnit;
+        }
+
+        asOfDate = asOfDate || new Date();
+        projectCostHistory = _.sortBy(projectCostHistory, function(obj){ return projectCostHistory.__asOfDate; });
+
+        var cost = projectCostHistory[projectCostHistory.length-1];
+        Ext.Array.each(projectCostHistory, function(obj){
+            if (Rally.util.DateTime.getDifference(asOfDate, obj.__asOfDate,'day') >= 0){
+                cost = obj.__cost;
+                return false;
+            }
+        },this,true);
+        return cost;
+
+    },
+
+    isProjectUsingNormalizedCost: function(project_ref){
+        if (CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit[project_ref]){
+            return false;
+        }
+        return true;
+    },
+    /**
+     * END Project Cost History updates...
+     */
     setCalculationType: function(type){
         //Check that actuals is on, and warn user if it is not.
         if (type === 'taskHours'){
@@ -2422,16 +1654,7 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.currencyPrecision,
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.currencyEnd);
     },
-    getCostPerUnit: function(project_ref){
-        return CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit[project_ref] || CArABU.technicalservices.PortfolioItemCostTrackingSettings.normalizedCostPerUnit;
-    },
 
-    isProjectUsingNormalizedCost: function(project_ref){
-        if (CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit[project_ref]){
-            return false;
-        }
-        return true;
-    },
     /**
      * This function returns all the fields that we want to return for the tree. It is built depending on the settings for cost calculations so
      * that we know to include all necessary fields.
@@ -2466,7 +1689,6 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
         return Ext.Array.merge(CArABU.technicalservices.PortfolioItemCostTrackingSettings.requiredFetch,
             CArABU.technicalservices.PortfolioItemCostTrackingSettings._getPreliminaryBudgetFields(),
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.requiredPortfolioItemFetch);
-
     },
     _getPreliminaryBudgetFields: function(){
         var preliminaryBudgetFields = [CArABU.technicalservices.PortfolioItemCostTrackingSettings.preliminaryBudgetField];
@@ -2477,8 +1699,7 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
     },
     getFields: function(config) {
 
-        var current_calculation_type = (config && config.selectedCalculationType) || 'points',
-            current_project_costs = (config && config.projectCostPerUnit) || {};
+        var current_calculation_type = (config && config.selectedCalculationType) || 'points';
 
         var currency_store = Ext.create('Rally.data.custom.Store', {
             data: CArABU.technicalservices.PortfolioItemCostTrackingSettings.currencyData
@@ -2528,14 +1749,6 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             width: 200,
             value: config.normalizedCostPerUnit,
             margin: '25 0 0 0'
-        },{
-            xtype: 'costperprojectsettings',
-            name: 'projectCostPerUnit',
-            fieldLabel: 'Optionally define costs per unit for individual teams (exceptions to the normalized cost)',
-            labelAlign: 'top',
-            margin: '25 0 0 0',
-            value: current_project_costs,
-            readyEvent: 'ready'
         }];
     }
 });
@@ -2596,46 +1809,71 @@ Ext.define("portfolio-cost-tracking-v2", {
         });
     },
     loadModelNames: function () {
-        var promises = [this.fetchDoneStates(), this._createPITypePicker()];
+        var promises = [this.fetchDoneStates(), this._createPITypePicker(),this.fetchProjectCostHistory()];
         return Deft.Promise.all(promises).then({
             success: function (results) {
+                this.logger.log('results', results);
                 this.currentType = results[1];
-                this._initializeSettings(this.getSettings(), results[0], this.piTypePicker);
+                this._initializeSettings(this.getSettings(), results[0], this.piTypePicker, results[2]);
                 this._initializeRollupData(this.currentType.get('TypePath'));
                 return [this.currentType.get('TypePath')];
             },
             scope: this
         });
     },
+    fetchProjectCostHistory: function(){
+        this.logger.log('fetchProjectCostHistory');
+        var deferred = Ext.create('Deft.Deferred'),
+            me=this;
+
+        CArABU.technicalservices.ProjectCostModelBuilder.build('Preference', 'ProjectCostModel').then({
+            success: function(model){
+                Ext.create('Rally.data.wsapi.Store',{
+                    model: model,
+                    fetch: ['Name','Project','Type','Value','CreationDate'],
+                    filters: [{
+                        property: 'Name',
+                        operator: "contains",
+                        value: CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix
+                    },{
+                        property: 'Workspace',
+                        value: this.getContext().getWorkspace()._ref
+                    }],
+                    context: {
+                        workspace: this.getContext().getWorkspace()._ref,
+                        project: null
+                    }
+                }).load({
+                    callback: function(records, operation, success){
+                        me.logger.log('fetchProjectCostHistory', records, operation, success);
+                        if (success){
+                            deferred.resolve(records);
+                        } else {
+                            deferred.reject("Error loading project cost history: " + operation.error && operation.error.errors.join(','));
+                        }
+                    }
+                });
+            },
+            scope: this
+        });
+        return deferred;
+    },
     loadGridBoard: function () {
         this.logger.log('loadGridBoard', this.modelNames);
-        //return Rally.data.ModelFactory.getModels({
-        //    context: this.getContext(),
-        //    types: this.modelNames,
-        //    requester: this
-        //}).then({
-        //    success: function (models) {
-        //        this.models = _.transform(models, function (result, value) {
-        //            result.push(value);
-        //        }, []);
-        //
-        //        this.modelNames = _.keys(models);
 
-                return this._getTreeGridStore().then({
-                    success: function (store) {
-                        this.addGridBoard(store);
-                    },
-                    scope: this
-                });
-        //    },
-        //    scope: this
-        //});
+        this._getTreeGridStore().then({
+            success: function (store) {
+                this.addGridBoard(store);
+            },
+            scope: this
+        });
     },
 
     addGridBoard: function (store) {
         if (this.gridboard) {
             this.gridboard.destroy();
         }
+
         var customColumns = this.getDerivedColumns() || [],
             columnCfgs = Ext.Array.merge(this.getColumnCfgs() || [], customColumns);
         this.logger.log('addGridBoard', store, this.modelNames);
@@ -2646,7 +1884,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             context: this.getContext(),
             toggleState: 'grid',
             stateful: false,
-            stateId: 'gridboard',
+            stateId: 'gridboard-18',
             modelNames: _.clone(this.modelNames),
             plugins: this.getGridBoardPlugins(),
             gridConfig: {
@@ -2656,8 +1894,8 @@ Ext.define("portfolio-cost-tracking-v2", {
             },
             height: this.getHeight()
         });
-        this.gridboard.on('modeltypeschange', this._onTypeChange, this);
 
+        //this.gridboard.on('modeltypeschange', this._onTypeChange, this);
 
         this.fireEvent('gridboardadded', this.gridboard);
     },
@@ -2720,68 +1958,35 @@ Ext.define("portfolio-cost-tracking-v2", {
         if (this.piTypePicker && this.piTypePicker.destroy) {
             this.piTypePicker.destroy();
         }
+        if (!this.down('#selector_box')){
+            this.add({
+                itemId: 'selector_box',
+                layout: 'hbox'
+            });
+        }
+        this.down('#selector_box').removeAll();
 
         var deferred = new Deft.Deferred();
 
-        var piTypePickerConfig = {
-            preferenceName: this.getStateId('typepicker'),
-            //stateful: true,
-            //stateId: this.getContext().getScopedStateId('cb-type'),
+        this.piTypePicker = this.down('#selector_box').add({
+            xtype: 'rallyportfolioitemtypecombobox',
             context: this.getContext(),
+            labelAlign: 'right',
+            labelWidth: 100,
             listeners: {
                 select: this._onTypeChange,
                 ready: {
                     fn: function (picker) {
-                        deferred.resolve(picker.getSelectedType());
+                        var newType = picker && picker.getRecord();
+                        deferred.resolve(newType);
                     },
                     single: true
                 },
                 scope: this
             }
-        };
-
-        this.piTypePicker = Ext.create('Rally.ui.combobox.PortfolioItemTypeComboBox', piTypePickerConfig);
-        this.on('gridboardadded', function() {
-            var headerContainer = this.gridboard.getHeader().getLeft();
-            headerContainer.add(this.piTypePicker);
         });
 
         return deferred.promise;
-    },
-    getGridConfig: function (options) {
-
-
-        var customColumns = this.getDerivedColumns() || [],
-            columnCfgs = Ext.Array.merge(this.getColumnCfgs() || [], customColumns);
-
-        var config = {
-         //   xtype: 'rallytreegrid',
-          //  alwaysShowDefaultColumns: false,
-          //  bufferedRenderer: true,
-            columnCfgs: columnCfgs,
-            derivedColumns: customColumns,
-        //    enableBulkEdit: true,
-            //allowExpansionStateToBeSaved: this.allowExpansionStateToBeSaved,
-        //    enableInlineAdd: Rally.data.ModelTypes.areArtifacts(this.modelNames),
-        //    enableRanking: false,
-            //enableSummaryRow: Rally.data.ModelTypes.areArtifacts(this.modelNames),
-           // expandAllInColumnHeaderEnabled: true,
-            //plugins: this.getGridPlugins(),
-        //    stateId: this.getContext().getScopedStateId('portfolio-cost-tracking-grid'),
-        //    stateful: false,
-            store: options && options.gridStore,
-            //storeConfig: {
-            //    filters: this.getPermanentFilters()
-            //}
-        };
-
-
-        if (this.modelNames.length === 1 && !Rally.data.ModelTypes.isArtifact(this.modelNames[0])) {
-            config.noDataItemName = this.modelNames[0].toLowerCase();
-        }
-
-        this.logger.log('getGridConfig', config)
-        return config;
     },
     _initializeRollupData: function(newType){
         this.logger.log('_initializeRollupData', newType);
@@ -2804,22 +2009,18 @@ Ext.define("portfolio-cost-tracking-v2", {
         });
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.portfolioItemTypes = portfolioItemTypes;
     },
-    _onTypeChange: function (picker) {
-        var newType = picker.getSelectedType();
-        this.logger.log('_onTypeChange', newType);
-        if (this._pickerTypeChanged(picker)) {
+    _onTypeChange: function (picker, records) {
+        var newType = picker && picker.getRecord();
+        this.logger.log('_onTypeChange', picker, newType);
+
+        if (newType && this.currentType && newType.get('_ref') !== this.currentType.get('_ref')) {
             this.currentType = newType;
             this.modelNames = [newType.get('TypePath')];
             this._initializeRollupData(newType.get('TypePath'));
-            this.gridboard.fireEvent('modeltypeschange', this.gridboard, [newType]);
+            this.loadGridBoard();
         }
     },
-
-    _pickerTypeChanged: function(picker){
-        var newType = picker.getSelectedType();
-        return newType && this.currentType && newType.get('_ref') !== this.currentType.get('_ref');
-    },
-    _initializeSettings: function(settings, doneScheduleStates, piTypePicker){
+    _initializeSettings: function(settings, doneScheduleStates, piTypePicker, projectCostHistory){
 
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.notAvailableText = "--";
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.currencySign = settings.currencySign;
@@ -2829,12 +2030,8 @@ Ext.define("portfolio-cost-tracking-v2", {
             CArABU.technicalservices.PortfolioItemCostTrackingSettings.completedScheduleStates = doneScheduleStates;
         }
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.normalizedCostPerUnit = settings.normalizedCostPerUnit;
-
-        var project_cpu = settings.projectCostPerUnit || {};
-        if (!Ext.isObject(project_cpu)){
-            project_cpu = Ext.JSON.decode(project_cpu);
-        }
-        CArABU.technicalservices.PortfolioItemCostTrackingSettings.projectCostPerUnit = project_cpu;
+        
+        CArABU.technicalservices.PortfolioItemCostTrackingSettings.setProjectCostHistory(projectCostHistory);
 
         CArABU.technicalservices.PortfolioItemCostTrackingSettings.preliminaryBudgetField = settings.preliminaryBudgetField;
 
@@ -2870,6 +2067,7 @@ Ext.define("portfolio-cost-tracking-v2", {
         });
     },
     _loadRollupData: function(records){
+        this.logger.log('_loadRollupData', records);
 
         var loader = Ext.create('CArABU.technicalservices.RollupDataLoader',{
             context: this.getContext(),
@@ -2890,11 +2088,12 @@ Ext.define("portfolio-cost-tracking-v2", {
         Rally.ui.notify.Notifier.showError({message: msg});
     },
     _processRollupData: function(portfolioHash, stories, records){
+        this.logger.log('_processRollupData');
         var me = this;
         portfolioHash[records[0].get('_type').toLowerCase()] = records;
         this.rollupData.addRollupRecords(portfolioHash, stories);
         this.rollupData.updateModels(records);
-
+        this.down('rallygridboard').getGridOrBoard().getView().refresh();
         me._showStatus(null);
     },
     _showStatus: function(message){
@@ -2926,20 +2125,19 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         var fetch = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getTreeFetch([]);
         this.logger.log('_getTreeGridStore', fetch)
+
         return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
-            autoLoad: true,
-            childPageSizeEnabled: true,
+            //childPageSizeEnabled: true,
             context: this.getContext().getDataContext(),
             enableHierarchy: true,
             fetch: fetch,
             models: this.modelNames, // _.clone(this.models),
-            pageSize: 25,
+            //pageSize: 25,
             remoteSort: true,
             root: {expanded: true}
         }).then({
             success: function (treeGridStore) {
                 treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null});
-                treeGridStore.on('load', this._fireTreeGridReady, this, { single: true });
                 treeGridStore.on('load', this.updateDerivedColumns, this);
                 return treeGridStore;
             },
@@ -2947,6 +2145,7 @@ Ext.define("portfolio-cost-tracking-v2", {
         });
     },
     updateDerivedColumns: function(store, node, records){
+        this.logger.log('updateDerivedColumns');
         if (!store.model.getField('_rollupData')){
             store.model.addField({name: '_rollupData', type: 'auto', defaultValue: null});
         }
@@ -2961,28 +2160,28 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         return [{
             text: "Actual Cost To Date",
-            xtype: 'costtemplatecolumn', //'actualcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             costField: '_rollupDataActualCost',
             sortable: false,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataActualCost')
         },{
             text: "Remaining Cost",
-            xtype: 'costtemplatecolumn', //'remainingcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataRemainingCost',
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataRemainingCost')
         }, {
             text: 'Total Projected',
-            xtype: 'costtemplatecolumn', //'totalcosttemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataTotalCost',
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataTotalCost')
         },{
             text: 'Preliminary Budget',
-            xtype: 'costtemplatecolumn', //'preliminarybudgettemplatecolumn',
+            xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataPreliminaryBudget',

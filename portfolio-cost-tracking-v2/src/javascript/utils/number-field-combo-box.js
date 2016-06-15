@@ -9,7 +9,7 @@ Ext.define('CArABU.technicalservices.NumberFieldComboBox', {
     alias: 'widget.numberfieldcombobox',
     _isNotHidden: function(field) {
         var validFields= ['PreliminaryEstimate','RefinedEstimate'],
-            allowCustomNumberFields = false;
+            allowCustomNumberFields = true;
 
         if (!field.hidden) {
 
