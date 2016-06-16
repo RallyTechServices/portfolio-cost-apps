@@ -1,7 +1,24 @@
 #Portfolio Snapshot Viewer
 
+![ScreenShot](/images/snapshot-viewer.png)
+
+App that allows a user to view the "Snapshots" that they took from the Portfolio Item Cost Tracking v2 app.  
+
+This is so that a snapshot can show what the total projected cost was for a set of portfolio items at any given time.  
+
+The snapshots are created by the Portfolio Item Cost TRacking app.  They are stored in the preferences by name (assigned by the user who took the snapshot).  
+
+For this snapshot app, only one type of portfolio item can be displayed at one time.  Multiple snapshots can be displayed for 1 portfolio item type.  
+
 Caveats:
-If the portfolio item types change, the snapshot viewer will not work properly.
+With large numbers of items in a snapshot, an error may occur if the request is too big.  
+More than 200 items in a snapshot will result in the need to page and to export in pages.  
+
+Possible Enhancements:
+Chunk the request to avoid the first error in the caveats above.  
+Add a field picker 
+Ability to delete snapshots
+Ability to export all snapshots regardless of paging
 
 ## Development Notes
 
