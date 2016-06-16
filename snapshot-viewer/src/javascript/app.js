@@ -63,12 +63,14 @@ Ext.define("snapshot-viewer", {
 
         var snapshotData = Ext.Array.map(snapshotPrefRecords, function(r){
             return {
-                name: Ext.String.format("{0} [{1}]",CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshot(r), CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotModelType(r)),
-                value: r.get('Name')
+                _refObjectName: Ext.String.format("{0} [{1}]",CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshot(r), CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotModelType(r)),
+                _ref: r.get('Name')
             };
         });
 
         this.logger.log('snapshotData', snapshotData);
+        var tpl = '<div class="rally-checkbox-image"></div><div class="rally-checkbox-text">xyz</div>' ;
+
         this.add({
             xtype: 'container',
             layout: 'hbox',
@@ -84,8 +86,12 @@ Ext.define("snapshot-viewer", {
                 labelWidth: 100,
                 labelAlign: 'right',
                 multiSelect: true,
-                displayField: 'name',
-                valueField: 'value'
+                loadingHeight: 70,
+                minWidth: 70,
+                maxHeight: 300,
+                shadow: false,
+                displayField: '_refObjectName',
+                valueField: '_ref'
             },{
                 xtype: 'rallybutton',
                 text: 'Go',

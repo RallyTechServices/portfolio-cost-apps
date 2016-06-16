@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jun 16 2016 12:04:17 GMT-0600 (MDT) -->
+    <!--  Build Date: Thu Jun 16 2016 13:19:55 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jun 16 2016 12:04:17 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Thu Jun 16 2016 13:19:55 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 192483914948;
+        var CHECKSUM = 192483918283;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
