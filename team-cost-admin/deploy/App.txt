@@ -3,12 +3,12 @@
 <head>
     <title>Team Cost Admin App</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jun 15 2016 14:26:37 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Jun 15 2016 16:16:07 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jun 15 2016 14:26:37 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Wed Jun 15 2016 16:16:07 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 16179927775;
+        var CHECKSUM = 16911900515;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -507,6 +507,19 @@ Ext.define('CArABU.technicalservices.Exporter',{
 
 });
 
+
+Ext.define('CArABU.technicalservices.PortfolioCostApps.toolbox',{
+    singleton: true,
+
+    snapshotPrefPrefix: 'pSnapshot-',
+    teamCostPrefPrefix: 'costAsOf-',
+    getSnapshotPreferenceName: function(name){
+        return CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix + name;
+    },
+    getFriendlyNameFromSnapshotName: function(name){
+        return name.replace(CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,'');
+    }
+});
 
 
 Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{

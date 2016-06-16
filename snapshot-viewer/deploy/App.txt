@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Portfolio Snapshot Viewer</title>
+    <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
+    <!--  Build Date: Thu Jun 16 2016 13:20:14 GMT-0600 (MDT) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Thu Jun 16 2016 13:20:14 GMT-0600 (MDT)";
+        var BUILDER = "kcorkan";
+        var CHECKSUM = 69333188864;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350,
+    
+    informationalConfig: null,
+    
+    items: [{xtype:'container', itemId:'information' }],
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/var BUILDER = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+       
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+   
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    var stored_checksum = me._generateChecksum(text);
+                    if ( CHECKSUM !== stored_checksum ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _addToContainer: function(container){
+        var config = Ext.apply({
+            xtype:'container',
+            height: 200,
+            overflowY: true
+        }, this.informationalConfig);
+        
+        container.add(config);
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if ( !Ext.isEmpty( this.informationalConfig ) ) {
+            var container = this.down('#information');
+            this._addToContainer(container);
+            
+        }
+        
+        if (! app.isExternal() ) {
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            dock: 'bottom',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml,
+                doc: 'top'
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            dock:'bottom',
+            html:"This app was created by the CA AC Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html: Ext.String.format("Build date/time: {0} ({1})",
+                    APP_BUILD_DATE,
+                    BUILDER)
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define('CArABU.technicalservices.Exporter',{
+
+    mixins: {
+        observable: 'Ext.util.Observable'
+    },
+    constructor: function (config) {
+        this.mixins.observable.constructor.call(this, config);
+    },
+    saveCSVToFile:function(csv,file_name,type_object){
+        if (type_object === undefined){
+            type_object = {type:'text/csv;charset=utf-8'};
+        }
+        this.saveAs(csv,file_name, type_object);
+    },
+    saveAs: function(textToWrite, fileName)
+    {
+        if (Ext.isIE9m){
+            Rally.ui.notify.Notifier.showWarning({message: "Export is not supported for IE9 and below."});
+            return;
+        }
+
+        var textFileAsBlob = null;
+        try {
+            textFileAsBlob = new Blob([textToWrite], {type:'text/plain'});
+        }
+        catch(e){
+            window.BlobBuilder = window.BlobBuilder ||
+                window.WebKitBlobBuilder ||
+                window.MozBlobBuilder ||
+                window.MSBlobBuilder;
+            if (window.BlobBuilder && e.name === 'TypeError'){
+                bb = new BlobBuilder();
+                bb.append([textToWrite]);
+                textFileAsBlob = bb.getBlob("text/plain");
+            }
+
+        }
+
+        if (!textFileAsBlob){
+            Rally.ui.notify.Notifier.showWarning({message: "Export is not supported for this browser."});
+            return;
+        }
+
+        var fileNameToSaveAs = fileName;
+
+        if (Ext.isIE10p){
+            window.navigator.msSaveOrOpenBlob(textFileAsBlob,fileNameToSaveAs); // Now the user will have the option of clicking the Save button and the Open button.
+            return;
+        }
+
+        var url = this.createObjectURL(textFileAsBlob);
+
+        if (url){
+            var downloadLink = document.createElement("a");
+            if ("download" in downloadLink){
+                downloadLink.download = fileNameToSaveAs;
+            } else {
+                //Open the file in a new tab
+                downloadLink.target = "_blank";
+            }
+
+            downloadLink.innerHTML = "Download File";
+            downloadLink.href = url;
+            if (!Ext.isChrome){
+                // Firefox requires the link to be added to the DOM
+                // before it can be clicked.
+                downloadLink.onclick = this.destroyClickedElement;
+                downloadLink.style.display = "none";
+                document.body.appendChild(downloadLink);
+            }
+            downloadLink.click();
+        } else {
+            Rally.ui.notify.Notifier.showError({message: "Export is not supported "});
+        }
+
+    },
+    createObjectURL: function ( file ) {
+        if ( window.webkitURL ) {
+            return window.webkitURL.createObjectURL( file );
+        } else if ( window.URL && window.URL.createObjectURL ) {
+            return window.URL.createObjectURL( file );
+        } else {
+            return null;
+        }
+    },
+    destroyClickedElement: function(event)
+    {
+        document.body.removeChild(event.target);
+    },
+    fetchExportData: function(rootModel, rootFilters, fetch, columns){
+        var deferred = Ext.create('Deft.Deferred');
+        var rootFetch = Ext.Array.merge(fetch, CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemFetch());
+        var me = this;
+
+
+        var loader = Ext.create('CArABU.technicalservices.RollupDataLoader',{
+            portfolioItemTypes: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes(),
+            featureName: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName(),
+            listeners: {
+                rollupdataloaded: function(portfolioHash, stories){
+                    //onsole.log('rollupdataloaded', portfolioHash, stories);
+                    var rollupData = Ext.create('CArABU.technicalservices.RollupCalculator', {
+                        portfolioItemType: rootModel
+                    });
+
+                    rollupData.addRollupRecords(portfolioHash, stories);
+                    //onsole.log('models updateded', portfolioHash, stories);
+                    var exportData = me._getExportableRollupData(portfolioHash[rootModel.toLowerCase()],columns, rollupData);
+                    columns = me._getAncestorTypeColumns(rootModel).concat(columns);
+
+                    var csv = me._transformExportableRollupDataToDelimitedString(exportData, columns);
+                    this.fireEvent('statusupdate', null);
+                    deferred.resolve(csv);
+                },
+                loaderror: function(msg){
+                    deferred.reject(msg);
+                },
+                statusupdate: function(status){
+                    this.fireEvent('statusupdate', status);
+                },
+                scope: this
+            }
+        });
+        loader.loadTree({model: rootModel, fetch: rootFetch, filters: rootFilters || []});
+
+        return deferred;
+    },
+    _transformExportableRollupDataToDelimitedString: function(rollupData, columns){
+        var csvArray = [],
+            delimiter = ",",
+            rowDelimiter = "\r\n",
+            re = new RegExp(delimiter + '|\"|\r|\n','g');
+
+        var column_keys = _.map(columns, function(c){ return c.costField || c.dataIndex; }),
+            column_headers = _.pluck(columns, 'text');
+
+        csvArray.push(column_headers.join(delimiter));
+
+        Ext.Array.each(rollupData, function(obj){
+            var data = [];
+            Ext.Array.each(column_keys, function(key){
+                var val = obj[key];
+                if (val){
+                    if (re.test(val)){ //enclose in double quotes if we have the delimiters
+                        val = val.replace('"','\"\"');
+                        val = Ext.String.format("\"{0}\"",val);
+                    }
+                }
+                data.push(val);
+            });
+            csvArray.push(data.join(delimiter));
+        });
+
+        return csvArray.join(rowDelimiter);
+    },
+    /**
+     * Returns an array of hash rollup data
+     *
+     * @param rootObjectIDs
+     * @param columns - the data index of the columns that we want to export.
+     * @param rollupData
+     * @returns {Array}
+     * @private
+     */
+    _getExportableRollupData: function(records, columns, rollupData){
+
+        var exportData = [],
+            me = this;
+
+
+        _.each(records, function(r){
+            var obj = rollupData.getRollupData(r);
+            if (obj){
+                var ancestors = {};
+                var rec = obj.getExportRow(columns, ancestors);
+                exportData.push(rec);
+                me._addExportChildren(obj,exportData, columns, rollupData,ancestors);
+            }
+        }, this);
+        return exportData;
+    },
+    _addExportChildren: function(obj, exportData, columns, rollupData,ancestors){
+        var new_ancestors = Ext.clone(ancestors),
+            me = this;
+        new_ancestors[obj._type] = obj.FormattedID;
+
+        var children = obj.children;
+        if (children && children.length > 0){
+            _.each(children, function(c){
+                var row = c.getExportRow(columns, new_ancestors);
+                exportData.push(row);
+                me._addExportChildren(c, exportData, columns, rollupData, new_ancestors);
+            }, this);
+        }
+        return;
+    },
+    _getAncestorTypeColumns: function(rootModel){
+        var piTypes = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypeObjects(),
+            piIdx = -1;
+
+        Ext.Array.each(piTypes, function(piObj, idx){
+            if (piObj.typePath.toLowerCase() === rootModel.toLowerCase()){
+                piIdx = idx;
+            }
+        });
+
+        var columns = [{
+            dataIndex: 'hierarchicalrequirement',
+            text: 'User Story'
+        }];
+
+        if (piIdx >= 0){
+            columns = columns.concat(Ext.Array.map(piTypes.slice(0,piIdx+1), function(piObj) { return { dataIndex: piObj.typePath.toLowerCase(), text: piObj.name };} ));
+            columns.push({
+                dataIndex: 'type',
+                text: 'Artifact Type'
+            });
+            columns.reverse();
+        }
+        return columns;
+    },
+    fetchWsapiRecords: function(model, query_filters, fetch_fields, context){
+        var deferred = Ext.create('Deft.Deferred');
+
+        Ext.create('Rally.data.wsapi.Store',{
+            model: model,
+            fetch: fetch_fields,
+            filters: query_filters,
+            context: context,
+            limit: Infinity
+        }).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(Ext.String.format("Error getting {0} for {1}: {2}", model, query_filters.toString(), operation.error.errors.join(',')));
+                }
+            }
+        });
+        return deferred;
+    },
+    getCSVFromGrid:function(grid){
+
+        var store = grid.getStore();
+
+        var columns = grid.columns;
+        var column_names = [];
+        var headers = [];
+
+        var csv = [];
+
+        Ext.Array.each(columns,function(column){
+            if (column.xtype != 'rallyrowactioncolumn' && (column.dataIndex)) {
+                column_names.push(column.dataIndex);
+                headers.push(column.csvText || column.text || column.dataIndex);
+            }
+        });
+
+        csv.push('"' + headers.join('","') + '"');
+
+        var mock_meta_data = {
+            align: "right",
+            classes: [],
+            cellIndex: 9,
+            column: null,
+            columnIndex: 9,
+            innerCls: undefined,
+            recordIndex: 5,
+            rowIndex: 5,
+            style: "",
+            tdAttr: "",
+            tdCls: "x-grid-cell x-grid-td x-grid-cell-headerId-gridcolumn-1029 x-grid-cell-last x-unselectable",
+            unselectableAttr: "unselectable='on'"
+        }
+
+
+        Ext.Array.each(store.getRange(), function(record){
+            var node_values = [];
+            Ext.Array.each(columns,function(column){
+                if (column.xtype != 'rallyrowactioncolumn') {
+                    if (column.dataIndex) {
+                        var column_name = column.dataIndex;
+                        var display_value = record.get(column_name);
+
+                        if (!column._csvIgnoreRender && column.renderer) {
+                            if (column.exportRenderer) {
+                                display_value = column.exportRenderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                            } else {
+                                display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                            }
+                        }
+                        var val = "";
+                        if (display_value){
+                            if (Ext.isObject(display_value)){
+                                display_value = display_value._refObjectName || display_value.Name || display_value.FormattedID;
+                            }
+                            if (isNaN(display_value)){
+                                val = display_value.replace(/\"/g,'\"\"');
+                            } else {
+                                val = display_value;
+                            }
+                        }
+                        val = Ext.String.format("\"{0}\"",val);
+                        node_values.push(val);
+                    }
+                }
+            },this);
+            csv.push(node_values.join(','));
+        });
+        return csv.join("\r\n");
+    }
+
+});
+
+
+Ext.define('CArABU.technicalservices.PortfolioCostApps.toolbox',{
+    singleton: true,
+
+    snapshotPrefPrefix: 'portfolioSnapshot-v1-',
+    teamCostPrefPrefix: 'costAsOf-',
+    getSnapshotPreferenceName: function(name){
+        return Ext.String.format("{0}{1}",CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,name);
+    },
+    getFriendlyNameFromSnapshot: function(snap){
+        var name = snap.get('Name');
+        return name.replace(CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,'');
+    },
+    getSnapshotModelType: function(snap){
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        return obj.type || null;
+    },
+    getSnapshotData: function(snap){
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        return obj.data || {};
+    },
+    getEncodedSnapshotValueString: function(oidValueHash, type){
+        var obj = {
+            type: type,
+            data: oidValueHash
+        };
+        return Ext.JSON.encode(obj);
+    }
+});
+
+
+Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
+    singleton: true,
+    prefPrefix: 'costAsOf-',
+    build: function(modelType, newModelName) {
+        var deferred = Ext.create('Deft.Deferred');
+        var prefPrefix = CArABU.technicalservices.ProjectCostModelBuilder.prefPrefix;
+
+        Rally.data.ModelFactory.getModel({
+            type: modelType,
+            success: function (model) {
+
+                var default_fields = [{
+                    name: '__cost',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.cost;
+                        }
+                    }
+                }, {
+                    name: '__userDisplayName',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj) {
+                            obj = Ext.JSON.decode(obj);
+                            return obj.userDisplayName;
+                        }
+                    }
+                }, {
+                    name: '__asOfDate',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj) {
+                            obj = Ext.JSON.decode(obj);
+                            return Rally.util.DateTime.fromIsoString(obj.asOfDate);
+                        }
+                    }
+                }];
+
+                var new_model = Ext.define(newModelName, {
+                    extend: model,
+                    logger: new Rally.technicalservices.Logger(),
+                    fields: default_fields,
+                    prefPrefix: prefPrefix,
+                    setCostForProject: function(cost, asOfDate, userName){
+                        var isoDate = Rally.util.DateTime.toIsoString(asOfDate),
+                            name = this.prefPrefix + isoDate;
+
+                        this.set('Name', name);
+
+                        var obj = {
+                            cost: cost,
+                            asOfDate: isoDate,
+                            userDisplayName: userName
+                        };
+                        this.logger.log('setCostPerProject', name, obj, cost, asOfDate, userName);
+
+                        this.set('Value', Ext.JSON.encode(obj));
+                    }
+                });
+                deferred.resolve(new_model);
+            }
+        });
+        return deferred;
+    }
+});
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350,
+    
+    informationalConfig: null,
+    
+    items: [{xtype:'container', itemId:'information' }],
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/var BUILDER = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+       
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+   
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    var stored_checksum = me._generateChecksum(text);
+                    if ( CHECKSUM !== stored_checksum ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _addToContainer: function(container){
+        var config = Ext.apply({
+            xtype:'container',
+            height: 200,
+            overflowY: true
+        }, this.informationalConfig);
+        
+        container.add(config);
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if ( !Ext.isEmpty( this.informationalConfig ) ) {
+            var container = this.down('#information');
+            this._addToContainer(container);
+            
+        }
+        
+        if (! app.isExternal() ) {
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            dock: 'bottom',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml,
+                doc: 'top'
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            dock:'bottom',
+            html:"This app was created by the CA AC Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html: Ext.String.format("Build date/time: {0} ({1})",
+                    APP_BUILD_DATE,
+                    BUILDER)
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+
+(function() {
+    var Ext = window.Ext4 || window.Ext;
+
+    /**
+     * A component that provides similar functionality as a traditional `<select>` input.  It requires a
+     * {@link #store} or {@link #storeConfig}, which provides data for the combo box and is configured
+     * through the {@link #displayField}, {@link #valueField}, and {@link #queryMode} config options (among others).
+     *
+     * An example combo box created via its #xtype:
+     *
+     *     @example
+     *     Ext.widget('rallycombobox', {
+     *         storeConfig: {
+     *             autoLoad: true,
+     *             model: 'UserStory'
+     *         },
+     *         renderTo: Ext.getBody().dom
+     *     });
+     *
+     * A combo box added to a container:
+     *
+     *     @example
+     *     Ext.create('Ext.Container', {
+     *         items: [{
+     *             xtype: 'rallycombobox',
+     *             storeConfig: {
+     *                 autoLoad: true,
+     *                 model: 'UserStory'
+     *             }
+     *         }],
+     *         renderTo: Ext.getBody().dom
+     *     });
+     *
+     * The ComboBox can be made stateful by setting the {@link #stateful} property to true.  This will
+     * use the Ext.state.Stateful mixin to save and restore state based on the {@link #stateId} property.
+     * If the {@link #stateful} property is set to true, a unique {@link #stateId} must be provided.
+     */
+    Ext.define('Rally.ui.combobox.ComboBox', {
+        extend: 'Ext.form.field.ComboBox',
+        alias: 'widget.rallycombobox',
+        requires: [
+            'Rally.data.wsapi.Store'
+        ],
+        mixins: {
+            clientMetrics: 'Rally.clientmetrics.ClientMetricsRecordable'
+        },
+
+        clientMetrics: [
+            {
+                endEvent: 'ready',
+                description: 'data loaded'
+            },
+            {
+                method: 'onListSelectionChange',
+                description: 'combobox value changed'
+            },
+            {
+                event: 'expand',
+                description: 'combobox expanded'
+            }
+        ],
+
+        inheritableStatics: {
+            queryDelay: 500
+        },
+
+        config: {
+            /**
+             * @cfg {Boolean} showArrows
+             * Determines if the combo box displays arrows to increment/decrement the selected item
+             */
+            showArrows: false,
+
+            /**
+             * @cfg {String} arrowUserAction
+             * The client metrics action to record when the value is changed via arrow button
+             */
+            arrowUserAction: 'Arrow value changed',
+
+            /**
+             * @cfg {Boolean} invertArrows
+             * Determines which direction to increment/decrement through the bound list
+             * default: right arrow click increments the selected index (moves the selection down the dropdown list)
+             */
+            invertArrows: true,
+
+            /**
+             * @cfg {String}
+             * @inheritdoc
+             */
+            componentCls: 'rui-triggerfield',
+
+            /**
+             * @cfg {String}
+             * @inheritdoc
+             */
+            overCls: 'combobox-over',
+
+            /**
+             * @cfg {String}
+             * @inheritdoc
+             */
+            valueField: '_ref',
+
+            /**
+             * @cfg {String}
+             * @inheritdoc
+             */
+            displayField: '_refObjectName',
+
+            /**
+             * @cfg {Boolean}
+             * @inheritdoc
+             */
+            matchFieldWidth: false,
+
+            /**
+             * @cfg {String}
+             * @inheritdoc
+             */
+            labelSeparator: '',
+
+            /**
+             * @cfg {Object}
+             * An optional set of configuration properties that will be passed to the Ext.data.Store's constructor.
+             * Any configuration that is valid for Store can be included.
+             * @cfg {String/Rally.data.Model} storeConfig.model (required)
+             */
+            storeConfig: { },
+
+            /**
+             * @cfg {String}
+             * The type of Ext.data.Store to create.
+             */
+            storeType: 'Rally.data.wsapi.Store',
+
+            /**
+             * @cfg {Object}
+             * @inheritdoc
+             */
+            listConfig: {
+                loadMask: false,
+                emptyText: 'No Items Found',
+                deferEmptyText: false,
+                hideMode: 'visibility'
+            },
+
+            /**
+             * @cfg {Boolean}
+             * @inheritdoc
+             * If set to true, {@link #stateId} must also be specified.
+             */
+            stateful: false,
+
+            /**
+             * @cfg {String}
+             * @inheritdoc
+             * If {@link #stateful} is set to true, a unique stateId must be provided to identify this component.
+             */
+            stateId: null,
+
+            /**
+             * @private
+             * @cfg {String} onChangeUserAction (Optional)
+             * The client metrics action to record when the value is changed
+             */
+
+            /**
+             * @cfg {Boolean}
+             * @inheritdoc
+             */
+            forceSelection: true,
+
+            /**
+             * @cfg {String}
+             * Set to 'first' or 'last' to select a default record value in the store, any other value will result in no default value being selected.
+             */
+            defaultSelectionPosition: 'first',
+
+            /**
+             * @cfg {Boolean}
+             * Automatically show the current value as highlighted in the combobox when it is expanded
+             */
+            autoSelectCurrentItem: true,
+
+            /**
+             * @type {Boolean}
+             * Automatically highlight an item when doing typeahead
+             */
+            autoSelect: true,
+
+            /**
+             * @cfg {Boolean}
+             * shows boundlist expanded when displayed
+             */
+            autoExpand: false,
+
+            /**
+             * @cfg {Boolean}
+             * @inheritdoc
+             */
+            enableKeyEvents: true,
+
+            /**
+             * @cfg {Boolean}
+             * Whether this combo box should reload if a scope change happens.
+             * The component container must be wired up to cause this to happen.
+             */
+            shouldRespondToScopeChange: false,
+
+            /**
+             * @cfg {Boolean}
+             * If true, creates a '-- No Entry --' option in the combobox, with a value of null.
+             */
+            allowNoEntry: false,
+
+            /**
+             * @cfg {String}
+             * Text to use for the '-- No Entry --' option.
+             */
+            noEntryText: '-- No Entry --',
+
+            /**
+             * @cfg {String}
+             * Value to use for the '-- No Entry --' option.
+             */
+            noEntryValue: null,
+
+            /**
+             * @cfg {Boolean}
+             * If true, creates a '-- Clear --' option in the combobox, with a value of ''.
+             * Useful if using the combobox as a filter.
+             */
+            allowClear: false,
+
+            /**
+             * @cfg {String}
+             * Text to use for the '-- Clear --' option.
+             */
+            clearText: '-- Clear --',
+
+            /**
+             * @cfg {String}
+             * Value to use for the '-- Clear --' option.
+             */
+            clearValue: '',
+
+            /**
+             * @cfg {Rally.env.Context/Rally.app.Context}
+             * The current context to use
+             */
+            context: undefined
+        },
+
+        constructor: function(config) {
+            config = config || {};
+
+            if (config.storeConfig && !config.storeConfig.remoteFilter || config.store && !config.store.remoteFilter) {
+                this.queryMode = 'local';
+            } else {
+                // hack to make 4.2 happy. 4.2 put us in a strange bind where we can't use queryMode local or remote
+                // this enables us to use remote query mode (so our filters get added as a query param to wsapi) and enables
+                // our query to actually get onto the request
+                this.lastQuery = '';
+            }
+
+            if(config.multiSelect) {
+                config = Ext.merge({
+                    cls: 'rally-checkbox-combobox',
+                    autoSelect: false,
+                    editable: false,
+                    defaultSelectionPosition: null,
+                    allowClear: false,
+                    displayTpl: this._getMultiSelectDisplayTpl(),
+                    listConfig: {
+                        cls: 'rally-checkbox-boundlist',
+                        itemTpl: this._getMultiSelectListItemTpl(),
+                        tpl: this._getMultiSelectListItemTpl()
+                    }
+                }, config);
+            }
+            console.log('config.listConfig', config.listConfig);
+            if (config.listConfig && !config.listConfig.itemTpl) {
+                this.listConfig.itemTpl = new Ext.XTemplate('{' + (config.displayField || this.displayField) + ':htmlEncode}');
+            }
+            // pull 'onChangeUserAction' into listConfig so it renders properly in client metrics
+            if (config.onChangeUserAction) {
+                Ext.applyIf(config.listConfig, { onChangeUserAction:config.onChangeUserAction });
+            }
+
+            this.mergeConfig(config);
+            this.callParent([this.config]);
+
+            if (this.originalAutoLoad) {
+                this.store.load();
+            } else if (this.store.getCount() > 0) {
+                this._onStoreLoad(this.store);
+                this.setDefaultValue();
+                this.onReady();
+            }
+
+            var bufferDelay = Ext.isNumber(this.queryDelay) && this.queryDelay > 100 ? this.queryDelay - 100 : 0;
+            this._bufferedRecordTypeAction = Ext.Function.createBuffered(this._recordTypeAction, bufferDelay, this);
+        },
+
+        initEvents: function() {
+            this.callParent(arguments);
+            if (!this.editable && this.autoExpand) {
+                this.mun(this.inputEl, 'click', this.onTriggerClick, this);
+            }
+        },
+
+        initComponent: function() {
+            var storeListeners;
+
+            this.addEvents(
+                /**
+                 * @event
+                 * Fires when the combobox has been rendered and has its data and an initial value
+                 * @param {Rally.ui.combobox.ComboBox} this
+                 */
+                'ready',
+
+
+                /**
+                 * @event
+                 * Fires whenever setValue is called. even if the value is the same
+                 */
+                'setvalue'
+            );
+
+            if (!this.store) {
+                // Never pass storeConfig.autoLoad through to buildStore because
+                // buildStore will load the store before we can wire up our own load listener
+                this.originalAutoLoad = this.storeConfig.autoLoad;
+                delete this.storeConfig.autoLoad;
+
+                storeListeners = this.storeConfig.listeners;
+                delete this.storeConfig.listeners;
+                Ext.applyIf(this.storeConfig, {
+                    requester: this
+                });
+
+                if(this.context && !this.storeConfig.context) {
+                    this.storeConfig.context = this.context.getDataContext();
+                }
+
+                this.store = Ext.create(this.storeType, this.storeConfig);
+            }
+
+            if (this.stateful) {
+                if (!this.stateId) {
+                    Ext.Error.raise('When stateful is enabled, you must provide a stateId!');
+                }
+                this.on('staterestore', this._onStateRestore, this, { single: true });
+            }
+
+            this.callParent(arguments);
+
+            this.store.on('load', this._onStoreLoad, this);
+
+            // Separate event because of how TimeBoxComboBox overrides _onStoreLoad and needs to finish before we setDefaultValue
+            this.store.on('load', this._setDefaultValueOnLoad, this, {single: true});
+
+            this.store.on('load', function() {
+                this.onReady();
+            }, this, {single: true});
+            this.store.on(storeListeners);
+
+            this.on('boxready', this._onBoxReady, this, {single: true});
+            this.on('focus', this._onFocus, this);
+            this.on('blur', this._onBlur, this);
+            this.on('keyup', this._onKeyUp, this);
+
+            if (this.autoExpand) {
+                this.on('focus', this.expand, this);
+            }
+
+            if (this.autoSelectCurrentItem) {
+                this.on('expand', this._highlightCurrentValue, this);
+            }
+
+            if (this.allowClear) {
+                this.on('select', this._onSelect, this);
+            }
+        },
+
+        destroy: function() {
+            this.callParent(arguments);
+            delete this.config;
+            delete this.initialConfig;
+        },
+
+        refreshStore: function() {
+            this.store.load();
+        },
+
+        _setDefaultValueOnLoad: function(store, records, successful) {
+            if (successful) {
+                this.setDefaultValue();
+            }
+        },
+
+        /**
+         * Return the record for the currently selected value.
+         *
+         * @return {Rally.data.Model} The record for the currently selected value
+         */
+        getRecord: function() {
+            return this.findRecordByValue(this.getValue());
+        },
+
+        onKeyDown: function(e, el) {
+            if (!this.editable && e.getKey() === e.BACKSPACE) {
+                e.stopEvent();
+            }
+        },
+
+        onEditorEnter: function(event) {
+            if (this.listKeyNav) {
+                this.listKeyNav.selectHighlighted(event);
+            }
+        },
+
+        getPicker: function() {
+            var picker = this.callParent(arguments),
+                el = this.getEl();
+            if(el) {
+                var comboBoxWidth = el.down('.' + Ext.baseCSSPrefix + 'form-trigger-input-cell').getWidth() +
+                    el.down('.' + Ext.baseCSSPrefix + 'trigger-cell').getWidth();
+                picker.minWidth = comboBoxWidth;
+            }
+            return picker;
+        },
+
+        createPicker: function() {
+            var picker = this.callParent(arguments);
+            this.mon(picker, 'refresh', this._onPickerRefresh, this);
+            return picker;
+        },
+
+        getDefaultValue: function() {
+            // this.originalValue is always set from this.value in Ext.form.field.Field#initValue, and
+            // this.value 'might' be cleared out if the store has not loaded yet
+            var value;
+
+            if (this._hasValue(this.value) && !_.isNull(this.value)) {
+                value = this.value;
+            } else if (this._hasValue(this.originalValue)) {
+                value = this.originalValue;
+            } else if (this._hasValue(this.stateValue)) {
+                value = this.stateValue;
+            }
+
+            return value;
+        },
+
+        _hasValue: function(value) {
+            if (_.isArray(value)) {
+                return !_.isEmpty(value);
+            } else {
+                return !_.isUndefined(value);
+            }
+        },
+
+        getInputTextValue: function() {
+            var inputEl = this.getInputElement();
+            if (inputEl) {
+                return inputEl.dom.value;
+            }
+        },
+
+        getInputElement: function() {
+            return this.inputEl;
+        },
+
+        applyState: function(state) {
+            this.store.on('load', function() {
+                this.setValue(state.value);
+                this.saveState();
+            }, this, {single: true});
+        },
+
+        saveState: function() {
+            var id = this.stateful && this.getStateId(),
+                hasListeners = this.hasListeners,
+                state;
+
+            if (id) {
+                state = this.getState() || {};    //pass along for custom interactions
+                if (!hasListeners.beforestatesave || this.fireEvent('beforestatesave', this, state) !== false) {
+
+                    //this conditional is the only difference from the stateful mixin save state method
+                    // we don't want to save null value for stateful comboboxes
+                    if (state.value) {
+                        Ext.state.Manager.set(id, state);
+                    } else {
+                        Ext.state.Manager.clear(id);
+                    }
+
+                    if (hasListeners.statesave) {
+                        this.fireEvent('statesave', this, state);
+                    }
+                }
+            }
+        },
+
+        onReady: function() {
+            this.fireEvent('ready', this);
+            if (Rally.BrowserTest) {
+                Rally.BrowserTest.publishComponentReady(this);
+            }
+        },
+
+        refreshWithNewContext: function(context) {
+            if(this.getShouldRespondToScopeChange()){
+                this.context = context;
+                if(this.getStore()){
+                    this.getStore().context = context.getDataContext();
+                    this.getStore().reload();
+                }
+            }
+        },
+
+        /**
+         * Override default Field getSubmitData to include null values. Important for saving "No Entry".
+         */
+        getSubmitData: function(){
+            var data = null,
+                val;
+            if (!this.disabled && this.submitValue && !this.isFileUpload()) {
+                val = this.getValue();
+                data = {};
+                data[this.getName()] = val;
+            }
+            return data;
+        },
+
+        reloadStoreWithNewProject: function(project) {
+            this.store.context = this.store.context || {};
+            Ext.merge(this.store.context, { project: Rally.util.Ref.getRelativeUri(project) });
+            this.store.load();
+        },
+
+        setContextFromRecord: function(record) {
+            this.reloadStoreWithNewProject(record.get('Project'));
+        },
+
+        setDefaultValue: function() {
+            var store = this.store,
+                defaultValue = this.getDefaultValue(),
+                defaultValueToNoEntry;
+
+            if (!store) {
+                return;
+            }
+
+            // Don't fire change event before load event is propagated.
+            this.suspendEvents(true);
+
+            try {
+                if (Ext.isDefined(defaultValue) && this.findRecordByValue(defaultValue)) {
+                    this.setValue(this.findRecordByValue(defaultValue));
+                } else if (Ext.isDefined(defaultValue) && _.isArray(defaultValue) && !_.isEmpty(defaultValue)) {
+                    this.setValue(defaultValue);
+                } else if (store.getCount()) {
+                    if (this.defaultSelectionPosition === 'first') {
+                        this.setValue(store.first().get(this.valueField));
+                    } else if (this.defaultSelectionPosition === 'last') {
+                        this.setValue(store.last().get(this.valueField));
+                    }
+                }
+
+                defaultValueToNoEntry = this.getAllowNoEntry() &&
+                    !this.getValue() &&
+                    (this.defaultSelectionPosition === 'first' || this.defaultSelectionPosition === 'last');
+
+                if (defaultValueToNoEntry) {
+                    this.setValue(this.store.first());
+                }
+
+                if (this.autoSelectCurrentItem) {
+                    this._highlightCurrentValue();
+                }
+            } finally {
+                if (this.value && !this.originalValue) {
+                    this.resetOriginalValue();
+                }
+                this.resumeEvents();
+            }
+        },
+
+        _highlightCurrentValue: function() {
+            this._highlightItemByValue(this.getValue());
+        },
+
+        _highlightItemByValue: function(value) {
+            if (this.picker) {
+                var record = this.store.findRecord(this.valueField, value),
+                    node = this.picker.getNode(record);
+
+                this.picker.highlightItem(node);
+            }
+        },
+
+        setValue: function(value) {
+            this.callParent(arguments);
+            this.fireEvent('setvalue', this, this.getValue());
+        },
+
+        setOriginalValue: function(value) {
+            this.originalValue = value;
+        },
+
+        _onPickerRefresh: function() {
+            //var emptyCls = 'rally-empty-boundlist';
+            //if (this.store.getRange().length < 1) {
+            //    this.picker.addCls(emptyCls);
+            //} else {
+            //    this.picker.removeCls(emptyCls);
+            //}
+        },
+
+        _onStateRestore: function(obj, state) {
+            this.stateValue = state.value;
+        },
+
+        _onStoreLoad: function() {
+            if (!this.store) {
+                return;
+            }
+            if (this.getAllowNoEntry()) {
+                this._insertNoEntry();
+            }
+            if (this.getAllowClear()) {
+                this._insertClear();
+            }
+        },
+
+        _insertClear: function() {
+            var doesNotHaveClear = this.store.count() === 0 || this.store.getAt(0).get(this.valueField) !== this.clearValue,
+            // !this.lastQuery prevents adding noEntry when querying a paged remote store
+            // then we can add noEntry when either the text box is empty, or the text is the no entry text
+                shouldAddClear = !this.lastQuery || !this.getInputTextValue() || this.getInputTextValue() === this.clearText,
+                record;
+
+            if (doesNotHaveClear && shouldAddClear) {
+                record = Ext.create(this.store.model);
+                record.set(this.displayField, this.clearText);
+                record.set(this.valueField, this.clearValue);
+                this.store.insert(0, record);
+            }
+        },
+
+        _insertNoEntry: function() {
+            var doesNotHaveNoEntry = this.store.count() === 0 || this.store.getAt(0).get(this.valueField) !== this.noEntryValue,
+            // !this.lastQuery prevents adding noEntry when querying a paged remote store
+            // then we can add noEntry when either the text box is empty, or the text is the no entry text
+                shouldAddNoEntry = !this.lastQuery || !this.getInputTextValue() || this.getInputTextValue() === this.noEntryText,
+                record;
+
+            if (doesNotHaveNoEntry && shouldAddNoEntry) {
+                record = Ext.create(this.store.model);
+                record.set(this.displayField, this.noEntryText);
+                record.set(this.valueField, this.noEntryValue);
+                this.store.insert(0, record);
+            }
+        },
+
+        _onBoxReady: function() {
+            // ComboBox does not respect maxWidth, is this an ExtJS bug?
+            if (this.getWidth() > this.maxWidth) {
+                this.setWidth(this.maxWidth);
+            }
+        },
+
+        _onFocus: function() {
+            this.addCls('combobox-focus');
+        },
+
+        _onBlur: function() {
+            this.removeCls('combobox-focus');
+
+            this._clearValueIfStoreLoading();
+        },
+
+        _clearValueIfStoreLoading: function() {
+            //Combobox should clear value if blurred away and search text isn't a valid value.
+            //But if store is loading, its not clearing value. This fixes that.
+            var store = this.getStore();
+            var inputEl = this.getInputElement();
+            if (this.forceSelection && store && store.isLoading() && !this.findRecordByDisplay(inputEl.dom.value)) {
+                inputEl.dom.value = '';
+            }
+        },
+
+        _onSelect: function() {
+            if (this.getValue() === this.clearValue) {
+                this.setOriginalValue(undefined);
+                this.reset();
+            }
+        },
+
+        _onKeyUp: function(textField, e) {
+            var key = e.getKey();
+            if (!e.isSpecialKey() || key === e.BACKSPACE || key === e.DELETE) {
+                this._bufferedRecordTypeAction(this);
+            }
+        },
+
+        _recordTypeAction: function() {
+            this.recordAction({
+                description: 'text search'
+            });
+        },
+
+        _getMultiSelectDisplayTpl: function() {
+            var me = this;
+            return Ext.create('Ext.XTemplate',
+                '{[this.getMultiSelectDisplayValue(values)]}',
+                {
+                    getMultiSelectDisplayValue: function(values) {
+                        var firstSelectedItem = _.first(_.pluck(values, me.displayField)),
+                            selectedItemCount = _.size(values);
+
+                        if (firstSelectedItem && selectedItemCount > 1) {
+                            return Ext.String.format('{0} (+{1})', firstSelectedItem, selectedItemCount - 1);
+                        }
+                        return firstSelectedItem || '';
+                    }
+                }
+            );
+        },
+
+        _getMultiSelectListItemTpl: function() {
+            var me = this;
+            return Ext.create('Ext.XTemplate',
+                '<div class="rally-checkbox-image"></div>',
+                '<div class="rally-checkbox-text">{' + me.displayField + ':htmlEncode}</div>'
+            );
+        }
+    });
+
+})();
+
+
+Ext.define('CArABU.technicalservices.PortfolioSnapshotModelBuilder',{
+    singleton: true,
+
+    build: function(modelType, newModelName, snapNames) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        Rally.data.ModelFactory.getModel({
+            type: modelType,
+            success: function (model) {
+
+                var default_fields = Ext.Array.map(snapNames, function(s){
+                    return {
+                        name: s,
+                        type: 'int',
+                        defaultValue: 0
+                    };
+                });
+
+                var new_model = Ext.define(newModelName, {
+                    extend: model,
+                    logger: new Rally.technicalservices.Logger(),
+                    fields: default_fields,
+
+                    updateSnapValues: function(snaps){
+                        var oid = this.get('ObjectID');
+                        Ext.Array.each(snaps, function(snap){
+                            var snapData = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotData(snap),
+                                snapName = CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshot(snap);
+
+                            if (snapData[oid]) {
+                                console.log('snaData', snapData[oid]);
+                                this.set(snapName, snapData[oid]);
+                            }
+                        }, this);
+                    }
+                });
+                deferred.resolve(new_model);
+            }
+        });
+        return deferred;
+    }
+});
+Ext.define("snapshot-viewer", {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    defaults: { margin: 10 },
+    items: [
+        {xtype:'container',itemId:'message_box',tpl:'Hello, <tpl>{_refObjectName}</tpl>'},
+        {xtype:'container',itemId:'display_box'}
+    ],
+
+    integrationHeaders : {
+        name : "snapshot-viewer"
+    },
+                        
+    launch: function() {
+        this._fetchSnapshotNames().then({
+            success: this._initializeApp,
+            failure: this._showError,
+            scope: this
+        });
+    },
+    _fetchSnapshotNames: function(){
+        var deferred = Ext.create('Deft.Deferred');
+
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'Preference',
+            fetch: ['Name','CreationDate','LastUpdateDate','Value'],
+            filters: [{
+                property: 'Name',
+                operator: 'contains',
+                value: CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix
+            }],
+            limit: 'Infinity'
+        }).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(operation.error.errors.join(','));
+                }
+            }
+        });
+
+        return deferred;
+    },
+    _showError: function(msg){
+        Rally.ui.notify.Notifier.showError({message: msg });
+    },
+    _initializeApp: function(snapshotPrefRecords){
+        this.logger.log('_initializeApp', snapshotPrefRecords);
+
+        this.removeAll();
+        if (!snapshotPrefRecords || snapshotPrefRecords.length === 0){
+            //write something in the container.
+            this.add({
+                xtype: 'container',
+                html: 'No snapshots found for current permissions.  Please use the appropriate Portfolio Cost Tracking app to add a snapshot.'
+            });
+            return;
+        }
+
+        this.snapshotRecords = snapshotPrefRecords;
+
+        var snapshotData = Ext.Array.map(snapshotPrefRecords, function(r){
+            return {
+                _refObjectName: Ext.String.format("{0} [{1}]",CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshot(r), CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotModelType(r)),
+                _ref: r.get('Name')
+            };
+        });
+
+        this.logger.log('snapshotData', snapshotData);
+        var tpl = '<div class="rally-checkbox-image"></div><div class="rally-checkbox-text">xyz</div>' ;
+
+        this.add({
+            xtype: 'container',
+            layout: 'hbox',
+            items: [{
+                xtype: 'rallycombobox',
+                itemId: 'cb-snapName',
+                store: Ext.create('Rally.data.custom.Store',{
+                    data: snapshotData
+                }),
+                margin: 5,
+                width: 350,
+                fieldLabel: 'Snapshot Name',
+                labelWidth: 100,
+                labelAlign: 'right',
+                multiSelect: true,
+                loadingHeight: 70,
+                minWidth: 70,
+                maxHeight: 300,
+                shadow: false,
+                displayField: '_refObjectName',
+                valueField: '_ref'
+            },{
+                xtype: 'rallybutton',
+                text: 'Go',
+                margin: 5,
+                listeners: {
+                    click: this._showSnapshots,
+                    scope: this
+                }
+            },{
+                xtype: 'rallybutton',
+                iconCls: 'icon-export secondary',
+                margin: '5 25 5 25',
+                listeners: {
+                    click: this._export,
+                    scope: this
+                }
+            }]
+        });
+
+
+    },
+    _export: function(){
+        this.logger.log('_export');
+        var exporter = Ext.create('CArABU.technicalservices.Exporter',{});
+        var filename = Ext.String.format("snap-export-{0}.csv", Rally.util.DateTime.format(new Date(), 'Y-m-d-h-M-s'));
+        var csv = exporter.getCSVFromGrid(this.down('#snapInfo'));
+        exporter.saveCSVToFile(csv, filename);
+    },
+    _getModelNames: function(snaps){
+        var models = [];
+        Ext.Array.each(snaps, function(s){
+            var modelType = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotModelType(s);
+            if (!Ext.Array.contains(models, modelType)){
+                models.push(modelType);
+            }
+        });
+        return models;
+    },
+    _showSnapshots: function(){
+
+        var cb = this.down('#cb-snapName');
+        if (!cb ){
+            return;
+        }
+
+        if (this.down('#snapInfo')){
+            this.down('#snapInfo').destroy();
+        }
+
+        this.logger.log('_showSnapshots', cb.getValue());
+        var snapValues = cb.getValue() || [],
+            snaps = Ext.Array.filter(this.snapshotRecords, function(s){
+                return Ext.Array.contains(snapValues, s.get('Name'));
+            }),
+            snapNames = Ext.Array.map(snaps, function(s){
+                return CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshot(s);
+            }),
+            models = this._getModelNames(snaps);
+
+        if (!models || models.length > 1){
+            this.add({
+                xtype: 'container',
+                itemId: 'snapInfo',
+                html: "Snapshots with multiple or unknown Portfolio Item types selected.  Please select snapshots for only one type of Portfolio Item."
+            });
+            return;
+        }
+        this._addGrid(snapNames, models[0], snaps)
+    },
+
+    _addGrid: function(snapNames, modelName, snaps){
+        this.logger.log('_addGrid', snapNames, modelName);
+
+
+        var objectIDs = [];
+        Ext.Array.each(snaps, function(s){
+            var val = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotData(s);
+            objectIDs = Ext.Array.merge(objectIDs, Ext.Object.getKeys(val));
+        });
+        this.logger.log('_addGrid objectIds', objectIDs);
+        var filters = Ext.Array.map(objectIDs, function(o){
+                return {
+                    property: 'ObjectID',
+                    value: o
+                };
+            });
+
+
+        CArABU.technicalservices.PortfolioSnapshotModelBuilder.build(modelName, "PortfolioSnapshot",snapNames).then({
+            success: function(model){
+                this.add({
+                    xtype:'rallygrid',
+                    showRowActionsColumn: false,
+                    enableEditing: false,
+                    itemId: 'snapInfo',
+                    storeConfig: {
+                        model: model,
+                        fetch: ['FormattedID','Name'],
+                        filters: Rally.data.wsapi.Filter.or(filters),
+                        limit: 'Infinity',
+                        listeners: {
+                            load: function(store, records){
+                                Ext.Array.each(records, function(r){
+                                    r.updateSnapValues(snaps);
+                                });
+                            },
+                            scope: this
+                        }
+                    },
+                    columnCfgs: this._getColumnCfgs(snapNames)
+                });
+            },
+            scope: this
+        });
+
+    },
+
+    _getColumnCfgs: function(snapNames){
+        var cols = [{
+            dataIndex: 'FormattedID',
+            _csvIgnoreRender: true
+        },{
+            dataIndex: 'Name',
+            flex: 1
+        },{
+            dataIndex: 'Project',
+            flex: 1
+        }];
+
+        Ext.Array.each(snapNames, function(n){
+            cols.push({
+                dataIndex: n,
+                text: n,
+                editor: false,
+                renderer: function(v,r){
+                    if (v > 0){
+                        return v;
+                    }
+                    return "";
+                }
+            });
+        });
+        return cols;
+    },
+    getOptions: function() {
+        return [
+            {
+                text: 'About...',
+                handler: this._launchInfo,
+                scope: this
+            }
+        ];
+    },
+    
+    _launchInfo: function() {
+        if ( this.about_dialog ) { this.about_dialog.destroy(); }
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+    },
+    
+    isExternal: function(){
+        return typeof(this.getAppId()) == 'undefined';
+    },
+    
+    //onSettingsUpdate:  Override
+    onSettingsUpdate: function (settings){
+        this.logger.log('onSettingsUpdate',settings);
+        // Ext.apply(this, settings);
+        this.launch();
+    }
+});
+
+            
+               Rally.launchApp('snapshot-viewer', {
+                   name: 'Portfolio Snapshot Viewer'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+
+    </style>
+
+</head>
+<body></body>
+</html>

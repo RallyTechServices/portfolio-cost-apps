@@ -1,80 +1,24 @@
-#Portfolio Cost Tracking (v2)
+#Portfolio Snapshot Viewer
 
-As a portfolio manager I would like to see the cost of the work, and even how that cost is broken down based on a release or a parent, across many teams that may have different costs.  
+![ScreenShot](/images/snapshot-viewer.png)
 
-The returned data set or Portfolio Items includes Portfolio Items of the selected type who's Actual End Date or Planned End Date (if Actual End Date is not populated) falls within the selected date range.  
+App that allows a user to view the "Snapshots" that they took from the Portfolio Item Cost Tracking v2 app.  
 
-![ScreenShot](/images/portfolio-cost-tracking-v2.png)
+This is so that a snapshot can show what the total projected cost was for a set of portfolio items at any given time.  
 
+The snapshots are created by the Portfolio Item Cost TRacking app.  They are stored in the preferences by name (assigned by the user who took the snapshot).  
 
-####Snapshots 
-In the bulk edit menu is a menu item called "Take Snapshot..." 
+For this snapshot app, only one type of portfolio item can be displayed at one time.  Multiple snapshots can be displayed for 1 portfolio item type.  
 
-This will take a "Snapshot" of the "Total Projected Cost" for the selected records and store that data in a preference that can be viewed and exported with teh Snapshot Viewer. 
-Snapshots are stored by name.  
+Caveats:
+With large numbers of items in a snapshot, an error may occur if the request is too big.  
+More than 200 items in a snapshot will result in the need to page and to export in pages.  
 
-The same name should not be used for multiple snapshots.
-
-Snapshots can only contain data for one type of portfolio item at a time.  Thus if multiple portfolio item types are selected, the "Take Snapshot..." option will not be available in the bulk menu. 
-
-
-###App Settings
-Configuring the Portfolio Item Cost Tracking App
-
- ![ScreenShot](/images/portfolio-cost-tracking-v2-settings.png)
-
-######Currency
-Determines which currency sign to display next to calculated costs.  
-
-######Calculate Preliminary Budget using
-Determines which field to use to calculate the Preliminary Budget.  
-
-The preliminary budget will be calculated for the lowest level portfolio item by multiplying the value of the selected field by the current Cost per Unit for the project of the item. 
-
-For upper level portfolio items, the preliminary budget will be the rollup of the portfolio item's children, NOT based on the value of the preliminary budget field for the upper level portfolio item.  
-
-If there are no lowest level portfolio items or the selected field value for all of them is null, then -- will be displayed.  
-
-######Calculate Cost
-Determines how to calculate total, actual and remaining costs.  Please see the details below for each option (Story Points, Task Actuals).
-
-######Normalized Cost Per Unit
-Cost per unit to use for calculating all costs where a specific project cost per unit is not specified.  
-
-######Exceptions to the normalized cost
-To specify project costs different than the value in the Normalized Cost Per Unit, use the Team Cost Admin app to store current and historical costs for a specific team.  
-
-###Cost Calcuation type details
-For all Cost Calculation options, the following definition applies:
-Cost Per Unit = Cost per unit for the current project scope.  
-If the cost per unit is defined for the specific project using the Team Cost Admin app, then that number will be used.  Otherwise, the Normalized Cost Per Unit will be used. 
-
-The cost per unit used for a team where an exception is defined will be the cost of the team on the day that the story was accepted.  If the story is not accepted, then the cost per unit will
-be the current cost of the team.  
-
-####Based On Story Points
-When Based On Story Points, the costs are calculated as followed:
-
-* Total Projected Cost:  Story Plan Estimate Total * Cost Per Unit
-* Actual Cost: Accepted Story Plan Estimate Total * Cost Per Unit
-* Remaining Cost: Total Projected - Actual Cost
-
-If there are no stories associated with the feature, or if the stories associated with the feature have no estimates, the costs associated with those stories will be 0.
-
-####Based On Task Actuals
-When Based On Task Actuals, the costs are calculated as followed:
-
-* Total Projected Cost:  Task Estimate Total * Cost Per Unit
-* Actual Cost: Task Actual Total * Cost Per Unit
-* Remaining Cost: (ToDo) Task Remaining Total * Cost Per Unit
-
-What if TaskActuals aren't turned on for my project? 
-If task actuals aren't turned on for your current project, there will be a warning banner and any task actual calculations for that project will be 0.  
-
-
-## License
-
-AppTemplate is released under the MIT license.  See the file [LICENSE](./LICENSE) for the full text.
+Possible Enhancements:
+Chunk the request to avoid the first error in the caveats above.  
+Add a field picker 
+Ability to delete snapshots
+Ability to export all snapshots regardless of paging
 
 ## Development Notes
 
