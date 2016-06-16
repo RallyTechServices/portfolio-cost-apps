@@ -11,7 +11,7 @@ App to enter current and historical team costs for use by the Portfolio Item Cos
 
 ![ScreenShot](/images/team-cost-admin.png)
 
-##Snapshot Viewer
+##Snapshot Viewer  [(more...)](/snapshot-viewer/README.md)
 App to show "Snapshots" of historical portfolio item Total Projected Cost data calculated by the Portfolio Item Cost Tracking v2 app 
 
 ![ScreenShot](/images/snapshot-viewer.png)
