@@ -11,14 +11,14 @@ The snapshots are created by the Portfolio Item Cost TRacking app.  They are sto
 For this snapshot app, only one type of portfolio item can be displayed at one time.  Multiple snapshots can be displayed for 1 portfolio item type.  
 
 Caveats:
-With large numbers of items in a snapshot, an error may occur if the request is too big.  
-More than 200 items in a snapshot will result in the need to page and to export in pages.  
+*  With large numbers of items in a snapshot, an error may occur if the request is too big.  
+*  More than 200 items in a snapshot will result in the need to page and to export in pages.  
 
 Possible Enhancements:
-Chunk the request to avoid the first error in the caveats above.  
-Add a field picker 
-Ability to delete snapshots
-Ability to export all snapshots regardless of paging
+*  Chunk the request to avoid the first error in the caveats above.  
+*  Add a field picker 
+*  Ability to delete snapshots
+*  Ability to export all snapshots regardless of paging
 
 ## Development Notes
 
