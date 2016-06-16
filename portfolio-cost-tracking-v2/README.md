@@ -4,12 +4,24 @@ As a portfolio manager I would like to see the cost of the work, and even how th
 
 The returned data set or Portfolio Items includes Portfolio Items of the selected type who's Actual End Date or Planned End Date (if Actual End Date is not populated) falls within the selected date range.  
 
-![ScreenShot](/images/grid.png)
+![ScreenShot](/images/portfolio-cost-tracking-v2.png)
+
+
+####Snapshots 
+In the bulk edit menu is a menu item called "Take Snapshot..." 
+
+This will take a "Snapshot" of the "Total Projected Cost" for the selected records and store that data in a preference that can be viewed and exported with teh Snapshot Viewer. 
+Snapshots are stored by name.  
+
+The same name should not be used for multiple snapshots.
+
+Snapshots can only contain data for one type of portfolio item at a time.  Thus if multiple portfolio item types are selected, the "Take Snapshot..." option will not be available in the bulk menu. 
+
 
 ###App Settings
 Configuring the Portfolio Item Cost Tracking App
 
- ![ScreenShot](/images/app_settings.png)
+ ![ScreenShot](/images/portfolio-cost-tracking-v2-settings.png)
 
 ######Currency
 Determines which currency sign to display next to calculated costs.  
@@ -58,6 +70,7 @@ When Based On Task Actuals, the costs are calculated as followed:
 
 What if TaskActuals aren't turned on for my project? 
 If task actuals aren't turned on for your current project, there will be a warning banner and any task actual calculations for that project will be 0.  
+
 
 ## License
 
