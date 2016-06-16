@@ -248,7 +248,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
         var headers = [];
 
         var csv = [];
-        console.log('getCSVFromGrid', columns);
+
         Ext.Array.each(columns,function(column){
             if (column.xtype != 'rallyrowactioncolumn' && (column.dataIndex)) {
                 column_names.push(column.dataIndex);
@@ -289,7 +289,17 @@ Ext.define('CArABU.technicalservices.Exporter',{
                                 display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
                             }
                         }
-                        var val = display_value.replace(/\"/g,'\"\"');
+                        var val = "";
+                        if (display_value){
+                            if (Ext.isObject(display_value)){
+                                display_value = display_value._refObjectName || display_value.Name || display_value.FormattedID;
+                            }
+                            if (isNaN(display_value)){
+                                val = display_value.replace(/\"/g,'\"\"');
+                            } else {
+                                val = display_value;
+                            }
+                        }
                         val = Ext.String.format("\"{0}\"",val);
                         node_values.push(val);
                     }

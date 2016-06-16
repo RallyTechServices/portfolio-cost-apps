@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Snapshot Viewer</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jun 15 2016 16:16:02 GMT-0600 (MDT) -->
+    <!--  Build Date: Thu Jun 16 2016 12:04:11 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jun 15 2016 16:16:02 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Thu Jun 16 2016 12:04:11 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 15780926362;
+        var CHECKSUM = 24514678812;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -453,7 +453,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
         var headers = [];
 
         var csv = [];
-        console.log('getCSVFromGrid', columns);
+
         Ext.Array.each(columns,function(column){
             if (column.xtype != 'rallyrowactioncolumn' && (column.dataIndex)) {
                 column_names.push(column.dataIndex);
@@ -494,7 +494,17 @@ Ext.define('CArABU.technicalservices.Exporter',{
                                 display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
                             }
                         }
-                        var val = display_value.replace(/\"/g,'\"\"');
+                        var val = "";
+                        if (display_value){
+                            if (Ext.isObject(display_value)){
+                                display_value = display_value._refObjectName || display_value.Name || display_value.FormattedID;
+                            }
+                            if (isNaN(display_value)){
+                                val = display_value.replace(/\"/g,'\"\"');
+                            } else {
+                                val = display_value;
+                            }
+                        }
                         val = Ext.String.format("\"{0}\"",val);
                         node_values.push(val);
                     }
@@ -511,13 +521,29 @@ Ext.define('CArABU.technicalservices.Exporter',{
 Ext.define('CArABU.technicalservices.PortfolioCostApps.toolbox',{
     singleton: true,
 
-    snapshotPrefPrefix: 'pSnapshot-',
+    snapshotPrefPrefix: 'portfolioSnapshot-v1-',
     teamCostPrefPrefix: 'costAsOf-',
     getSnapshotPreferenceName: function(name){
-        return CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix + name;
+        return Ext.String.format("{0}{1}",CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,name);
     },
-    getFriendlyNameFromSnapshotName: function(name){
+    getFriendlyNameFromSnapshot: function(snap){
+        var name = snap.get('Name');
         return name.replace(CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,'');
+    },
+    getSnapshotModelType: function(snap){
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        return obj.type || null;
+    },
+    getSnapshotData: function(snap){
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        return obj.data || {};
+    },
+    getEncodedSnapshotValueString: function(oidValueHash, type){
+        var obj = {
+            type: type,
+            data: oidValueHash
+        };
+        return Ext.JSON.encode(obj);
     }
 });
 
@@ -776,6 +802,49 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+
+Ext.define('CArABU.technicalservices.PortfolioSnapshotModelBuilder',{
+    singleton: true,
+
+    build: function(modelType, newModelName, snapNames) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        Rally.data.ModelFactory.getModel({
+            type: modelType,
+            success: function (model) {
+
+                var default_fields = Ext.Array.map(snapNames, function(s){
+                    return {
+                        name: s,
+                        type: 'int',
+                        defaultValue: 0
+                    };
+                });
+
+                var new_model = Ext.define(newModelName, {
+                    extend: model,
+                    logger: new Rally.technicalservices.Logger(),
+                    fields: default_fields,
+
+                    updateSnapValues: function(snaps){
+                        var oid = this.get('ObjectID');
+                        Ext.Array.each(snaps, function(snap){
+                            var snapData = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotData(snap),
+                                snapName = CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshot(snap);
+
+                            if (snapData[oid]) {
+                                console.log('snaData', snapData[oid]);
+                                this.set(snapName, snapData[oid]);
+                            }
+                        }, this);
+                    }
+                });
+                deferred.resolve(new_model);
+            }
+        });
+        return deferred;
+    }
+});
 Ext.define("snapshot-viewer", {
     extend: 'Rally.app.App',
     componentCls: 'app',
@@ -824,37 +893,190 @@ Ext.define("snapshot-viewer", {
     _showError: function(msg){
         Rally.ui.notify.Notifier.showError({message: msg });
     },
-    _initializeApp: function(snapshotNames){
-        this.logger.log('_initializeApp', snapshotNames);
+    _initializeApp: function(snapshotPrefRecords){
+        this.logger.log('_initializeApp', snapshotPrefRecords);
 
-        if (!snapshotNames || snapshotNames.length === 0){
+        this.removeAll();
+        if (!snapshotPrefRecords || snapshotPrefRecords.length === 0){
             //write something in the container.
+            this.add({
+                xtype: 'container',
+                html: 'No snapshots found for current permissions.  Please use the appropriate Portfolio Cost Tracking app to add a snapshot.'
+            });
+            return;
         }
 
-        var snapshotData = _.map(snapshotNames, function(s){
-            var name = s.get('Name');
+        this.snapshotRecords = snapshotPrefRecords;
+
+        var snapshotData = Ext.Array.map(snapshotPrefRecords, function(r){
             return {
-                name: CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshotName(name),
-                value: name
+                name: Ext.String.format("{0} [{1}]",CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshot(r), CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotModelType(r)),
+                value: r.get('Name')
             };
         });
+
         this.logger.log('snapshotData', snapshotData);
-        var cb = this.add({
-            xtype: 'rallycombobox',
-            store: Ext.create('Rally.data.custom.Store',{
-                data: snapshotData
-            }),
-            multiSelect: true,
-            displayField: 'name',
-            valueField: 'value'
+        this.add({
+            xtype: 'container',
+            layout: 'hbox',
+            items: [{
+                xtype: 'rallycombobox',
+                itemId: 'cb-snapName',
+                store: Ext.create('Rally.data.custom.Store',{
+                    data: snapshotData
+                }),
+                margin: 5,
+                width: 350,
+                fieldLabel: 'Snapshot Name',
+                labelWidth: 100,
+                labelAlign: 'right',
+                multiSelect: true,
+                displayField: 'name',
+                valueField: 'value'
+            },{
+                xtype: 'rallybutton',
+                text: 'Go',
+                margin: 5,
+                listeners: {
+                    click: this._showSnapshots,
+                    scope: this
+                }
+            },{
+                xtype: 'rallybutton',
+                iconCls: 'icon-export secondary',
+                margin: '5 25 5 25',
+                listeners: {
+                    click: this._export,
+                    scope: this
+                }
+            }]
         });
-        cb.on('select', this._showSnapshots, this);
+
 
     },
-    _showSnapshots: function(cb){
-        this.logger.log('_showSnapshots', cb.getValue());
+    _export: function(){
+        this.logger.log('_export');
+        var exporter = Ext.create('CArABU.technicalservices.Exporter',{});
+        var filename = Ext.String.format("snap-export-{0}.csv", Rally.util.DateTime.format(new Date(), 'Y-m-d-h-M-s'));
+        var csv = exporter.getCSVFromGrid(this.down('#snapInfo'));
+        exporter.saveCSVToFile(csv, filename);
     },
-    
+    _getModelNames: function(snaps){
+        var models = [];
+        Ext.Array.each(snaps, function(s){
+            var modelType = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotModelType(s);
+            if (!Ext.Array.contains(models, modelType)){
+                models.push(modelType);
+            }
+        });
+        return models;
+    },
+    _showSnapshots: function(){
+
+        var cb = this.down('#cb-snapName');
+        if (!cb ){
+            return;
+        }
+
+        if (this.down('#snapInfo')){
+            this.down('#snapInfo').destroy();
+        }
+
+        this.logger.log('_showSnapshots', cb.getValue());
+        var snapValues = cb.getValue() || [],
+            snaps = Ext.Array.filter(this.snapshotRecords, function(s){
+                return Ext.Array.contains(snapValues, s.get('Name'));
+            }),
+            snapNames = Ext.Array.map(snaps, function(s){
+                return CArABU.technicalservices.PortfolioCostApps.toolbox.getFriendlyNameFromSnapshot(s);
+            }),
+            models = this._getModelNames(snaps);
+
+        if (!models || models.length > 1){
+            this.add({
+                xtype: 'container',
+                itemId: 'snapInfo',
+                html: "Snapshots with multiple or unknown Portfolio Item types selected.  Please select snapshots for only one type of Portfolio Item."
+            });
+            return;
+        }
+        this._addGrid(snapNames, models[0], snaps)
+    },
+
+    _addGrid: function(snapNames, modelName, snaps){
+        this.logger.log('_addGrid', snapNames, modelName);
+
+
+        var objectIDs = [];
+        Ext.Array.each(snaps, function(s){
+            var val = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotData(s);
+            objectIDs = Ext.Array.merge(objectIDs, Ext.Object.getKeys(val));
+        });
+        this.logger.log('_addGrid objectIds', objectIDs);
+        var filters = Ext.Array.map(objectIDs, function(o){
+                return {
+                    property: 'ObjectID',
+                    value: o
+                };
+            });
+
+
+        CArABU.technicalservices.PortfolioSnapshotModelBuilder.build(modelName, "PortfolioSnapshot",snapNames).then({
+            success: function(model){
+                this.add({
+                    xtype:'rallygrid',
+                    showRowActionsColumn: false,
+                    enableEditing: false,
+                    itemId: 'snapInfo',
+                    storeConfig: {
+                        model: model,
+                        fetch: ['FormattedID','Name'],
+                        filters: Rally.data.wsapi.Filter.or(filters),
+                        limit: 'Infinity',
+                        listeners: {
+                            load: function(store, records){
+                                Ext.Array.each(records, function(r){
+                                    r.updateSnapValues(snaps);
+                                });
+                            },
+                            scope: this
+                        }
+                    },
+                    columnCfgs: this._getColumnCfgs(snapNames)
+                });
+            },
+            scope: this
+        });
+
+    },
+
+    _getColumnCfgs: function(snapNames){
+        var cols = [{
+            dataIndex: 'FormattedID',
+            _csvIgnoreRender: true
+        },{
+            dataIndex: 'Name',
+            flex: 1
+        },{
+            dataIndex: 'Project',
+            flex: 1
+        }];
+
+        Ext.Array.each(snapNames, function(n){
+            cols.push({
+                dataIndex: n,
+                text: n,
+                editor: false,
+                renderer: function(v,r){
+                    if (v > 0){
+                        return v;
+                    }
+                    return "";
+                }
+            });
+        });
+        return cols;
+    },
     getOptions: function() {
         return [
             {

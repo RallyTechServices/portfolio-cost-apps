@@ -91,8 +91,20 @@ Ext.define('CArABU.technicalservices.SnapshotBulkRecordMenuItem', {
             this._getSnapshotName();
         },
         predicate: function (records) {
+            var type = null;
+            //The goal here is to only allow selection of portfolio items and to
+            //not allow mixed selections (e.g. not allow initiatives and features both in one snapshot)
+            if (records && records.length > 0){
+                type = records[0].get('_type').toLowerCase();
+            }
             return _.every(records, function (record) {
-                return /portfolioitem/.test(record.get('_type').toLowerCase());
+                var recordType = record.get('_type').toLowerCase(),
+                    isPortfolioItem = /portfolioitem/.test(recordType);
+
+                if (!type){
+                    return isPortfolioItem;
+                }
+                return type === recordType;
             });
         },
         _getSnapshotName: function(){
@@ -110,19 +122,23 @@ Ext.define('CArABU.technicalservices.SnapshotBulkRecordMenuItem', {
         _saveSnapshot: function(name) {
             console.log('_saveSnapshot', name, this.records);
 
+            if (!this.records || this.records.length === 0){
+                return;
+            }
+
             var snapshotSettings = {};
             Ext.Array.each(this.records, function (r) {
                 snapshotSettings[r.get('ObjectID')] = r.get('_rollupData')._rollupDataTotalCost;
             });
 
-            var prefName = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotPreferenceName(name);
+            var type = this.records[0].get('_type');
 
             Rally.data.ModelFactory.getModel({
                 type: 'Preference',
                 success: function (model) {
                     var pref = Ext.create(model, {
-                        Name: prefName,
-                        Value: Ext.JSON.encode(snapshotSettings)
+                        Name: CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotPreferenceName(name),
+                        Value: CArABU.technicalservices.PortfolioCostApps.toolbox.getEncodedSnapshotValueString(snapshotSettings, type)
                     });
 
                     pref.save({

@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jun 15 2016 16:15:58 GMT-0600 (MDT) -->
+    <!--  Build Date: Thu Jun 16 2016 12:04:17 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jun 15 2016 16:15:58 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Thu Jun 16 2016 12:04:17 GMT-0600 (MDT)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 186430496060;
+        var CHECKSUM = 192483914948;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -453,7 +453,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
         var headers = [];
 
         var csv = [];
-        console.log('getCSVFromGrid', columns);
+
         Ext.Array.each(columns,function(column){
             if (column.xtype != 'rallyrowactioncolumn' && (column.dataIndex)) {
                 column_names.push(column.dataIndex);
@@ -494,7 +494,17 @@ Ext.define('CArABU.technicalservices.Exporter',{
                                 display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
                             }
                         }
-                        var val = display_value.replace(/\"/g,'\"\"');
+                        var val = "";
+                        if (display_value){
+                            if (Ext.isObject(display_value)){
+                                display_value = display_value._refObjectName || display_value.Name || display_value.FormattedID;
+                            }
+                            if (isNaN(display_value)){
+                                val = display_value.replace(/\"/g,'\"\"');
+                            } else {
+                                val = display_value;
+                            }
+                        }
                         val = Ext.String.format("\"{0}\"",val);
                         node_values.push(val);
                     }
@@ -511,13 +521,29 @@ Ext.define('CArABU.technicalservices.Exporter',{
 Ext.define('CArABU.technicalservices.PortfolioCostApps.toolbox',{
     singleton: true,
 
-    snapshotPrefPrefix: 'pSnapshot-',
+    snapshotPrefPrefix: 'portfolioSnapshot-v1-',
     teamCostPrefPrefix: 'costAsOf-',
     getSnapshotPreferenceName: function(name){
-        return CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix + name;
+        return Ext.String.format("{0}{1}",CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,name);
     },
-    getFriendlyNameFromSnapshotName: function(name){
+    getFriendlyNameFromSnapshot: function(snap){
+        var name = snap.get('Name');
         return name.replace(CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,'');
+    },
+    getSnapshotModelType: function(snap){
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        return obj.type || null;
+    },
+    getSnapshotData: function(snap){
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        return obj.data || {};
+    },
+    getEncodedSnapshotValueString: function(oidValueHash, type){
+        var obj = {
+            type: type,
+            data: oidValueHash
+        };
+        return Ext.JSON.encode(obj);
     }
 });
 
@@ -1858,8 +1884,20 @@ Ext.define('CArABU.technicalservices.SnapshotBulkRecordMenuItem', {
             this._getSnapshotName();
         },
         predicate: function (records) {
+            var type = null;
+            //The goal here is to only allow selection of portfolio items and to
+            //not allow mixed selections (e.g. not allow initiatives and features both in one snapshot)
+            if (records && records.length > 0){
+                type = records[0].get('_type').toLowerCase();
+            }
             return _.every(records, function (record) {
-                return /portfolioitem/.test(record.get('_type').toLowerCase());
+                var recordType = record.get('_type').toLowerCase(),
+                    isPortfolioItem = /portfolioitem/.test(recordType);
+
+                if (!type){
+                    return isPortfolioItem;
+                }
+                return type === recordType;
             });
         },
         _getSnapshotName: function(){
@@ -1877,19 +1915,23 @@ Ext.define('CArABU.technicalservices.SnapshotBulkRecordMenuItem', {
         _saveSnapshot: function(name) {
             console.log('_saveSnapshot', name, this.records);
 
+            if (!this.records || this.records.length === 0){
+                return;
+            }
+
             var snapshotSettings = {};
             Ext.Array.each(this.records, function (r) {
                 snapshotSettings[r.get('ObjectID')] = r.get('_rollupData')._rollupDataTotalCost;
             });
 
-            var prefName = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotPreferenceName(name);
+            var type = this.records[0].get('_type');
 
             Rally.data.ModelFactory.getModel({
                 type: 'Preference',
                 success: function (model) {
                     var pref = Ext.create(model, {
-                        Name: prefName,
-                        Value: Ext.JSON.encode(snapshotSettings)
+                        Name: CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotPreferenceName(name),
+                        Value: CArABU.technicalservices.PortfolioCostApps.toolbox.getEncodedSnapshotValueString(snapshotSettings, type)
                     });
 
                     pref.save({

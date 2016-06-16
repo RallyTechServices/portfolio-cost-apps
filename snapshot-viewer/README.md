@@ -1,5 +1,8 @@
 #Portfolio Snapshot Viewer
 
+Caveats:
+If the portfolio item types change, the snapshot viewer will not work properly.
+
 ## Development Notes
 
 ### First Load
