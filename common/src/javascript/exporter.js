@@ -144,6 +144,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
                     if (re.test(val)){ //enclose in double quotes if we have the delimiters
                         val = val.replace('"','\"\"');
                         val = Ext.String.format("\"{0}\"",val);
+
                     }
                 }
                 data.push(val);
