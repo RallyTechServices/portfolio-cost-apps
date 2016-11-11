@@ -130,6 +130,7 @@ Ext.define("team-cost-admin", {
                     model: 'Project',
                     autoLoad: true,
                     remoteFilter: false,
+                    limit: 'Infinity',
                     fetch: ['Name','_ref'],
                     sorters: [{
                         property: 'Name',

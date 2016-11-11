@@ -3,12 +3,12 @@
 <head>
     <title>Team Cost Admin App</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jun 15 2016 16:16:07 GMT-0600 (MDT) -->
+    <!--  Build Date: Fri Nov 11 2016 12:17:04 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jun 15 2016 16:16:07 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Fri Nov 11 2016 12:17:04 GMT-0700 (MST)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 16911900515;
+        var CHECKSUM = 17924379220;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -349,6 +349,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
                     if (re.test(val)){ //enclose in double quotes if we have the delimiters
                         val = val.replace('"','\"\"');
                         val = Ext.String.format("\"{0}\"",val);
+
                     }
                 }
                 data.push(val);
@@ -453,7 +454,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
         var headers = [];
 
         var csv = [];
-        console.log('getCSVFromGrid', columns);
+
         Ext.Array.each(columns,function(column){
             if (column.xtype != 'rallyrowactioncolumn' && (column.dataIndex)) {
                 column_names.push(column.dataIndex);
@@ -494,7 +495,17 @@ Ext.define('CArABU.technicalservices.Exporter',{
                                 display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
                             }
                         }
-                        var val = display_value.replace(/\"/g,'\"\"');
+                        var val = "";
+                        if (display_value){
+                            if (Ext.isObject(display_value)){
+                                display_value = display_value._refObjectName || display_value.Name || display_value.FormattedID;
+                            }
+                            if (isNaN(display_value)){
+                                val = display_value.replace(/\"/g,'\"\"');
+                            } else {
+                                val = display_value;
+                            }
+                        }
                         val = Ext.String.format("\"{0}\"",val);
                         node_values.push(val);
                     }
@@ -511,13 +522,29 @@ Ext.define('CArABU.technicalservices.Exporter',{
 Ext.define('CArABU.technicalservices.PortfolioCostApps.toolbox',{
     singleton: true,
 
-    snapshotPrefPrefix: 'pSnapshot-',
+    snapshotPrefPrefix: 'portfolioSnapshot-v1-',
     teamCostPrefPrefix: 'costAsOf-',
     getSnapshotPreferenceName: function(name){
-        return CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix + name;
+        return Ext.String.format("{0}{1}",CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,name);
     },
-    getFriendlyNameFromSnapshotName: function(name){
+    getFriendlyNameFromSnapshot: function(snap){
+        var name = snap.get('Name');
         return name.replace(CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,'');
+    },
+    getSnapshotModelType: function(snap){
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        return obj.type || null;
+    },
+    getSnapshotData: function(snap){
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        return obj.data || {};
+    },
+    getEncodedSnapshotValueString: function(oidValueHash, type){
+        var obj = {
+            type: type,
+            data: oidValueHash
+        };
+        return Ext.JSON.encode(obj);
     }
 });
 
@@ -721,6 +748,7 @@ Ext.define("team-cost-admin", {
                     model: 'Project',
                     autoLoad: true,
                     remoteFilter: false,
+                    limit: 'Infinity',
                     fetch: ['Name','_ref'],
                     sorters: [{
                         property: 'Name',
