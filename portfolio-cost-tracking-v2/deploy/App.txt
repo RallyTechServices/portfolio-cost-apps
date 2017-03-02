@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jun 16 2016 13:19:55 GMT-0600 (MDT) -->
+    <!--  Build Date: Thu Mar 02 2017 08:49:55 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jun 16 2016 13:19:55 GMT-0600 (MDT)";
-        var BUILDER = "kcorkan";
-        var CHECKSUM = 192483918283;
+        var APP_BUILD_DATE = "Thu Mar 02 2017 08:49:55 GMT-0800 (PST)";
+        var BUILDER = "marjo60";
+        var CHECKSUM = 194533185361;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -349,6 +349,7 @@ Ext.define('CArABU.technicalservices.Exporter',{
                     if (re.test(val)){ //enclose in double quotes if we have the delimiters
                         val = val.replace('"','\"\"');
                         val = Ext.String.format("\"{0}\"",val);
+
                     }
                 }
                 data.push(val);
@@ -984,8 +985,14 @@ Ext.override(Rally.ui.grid.TreeGrid, {
              //override:  Added additional search for column.text
             return _.contains(columnConfigs, column.dataIndex) ? column.dataIndex : _.find(columnConfigs, {dataIndex: column.dataIndex, text: column.text});
         }).compact().value();
-    }
+    },
+    
+//    _getColumnName: function(column) {
+//    	console.log('column', column);
+//        return (_.isString(column) ? column : column && column.dataIndex) || '';
+//    }
 });
+
 
 Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
     requires: ['Deft.promise.Promise'],
@@ -2079,7 +2086,7 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         var customColumns = this.getDerivedColumns() || [],
             columnCfgs = Ext.Array.merge(this.getColumnCfgs() || [], customColumns);
-        this.logger.log('addGridBoard', store, this.modelNames);
+        this.logger.log('addGridBoard', store, this.modelNames, columnCfgs);
 
         this.gridboard = this.add({
             itemId: 'gridboard',
@@ -2087,7 +2094,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             context: this.getContext(),
             toggleState: 'grid',
             stateful: false,
-            stateId: 'gridboard-18',
+            stateId: 'gridboard-19',
             modelNames: _.clone(this.modelNames),
             plugins: this.getGridBoardPlugins(),
             gridConfig: {
@@ -2249,10 +2256,13 @@ Ext.define("portfolio-cost-tracking-v2", {
 
     },
     _showExportMenu: function () {
-        var columnCfgs = this.down('rallytreegrid').columnCfgs,
-            additionalFields = _.filter(columnCfgs, function(c){ return (c.xtype === 'rallyfieldcolumn'); }),
+        //var columnCfgs = this.down('rallytreegrid').columnCfgs,
+        var columnCfgs = this.down('rallytreegrid').headerCt.getGridColumns(),
+            additionalFields = _.filter(columnCfgs, function(c){ return (c.xtype === 'rallyfieldcolumn' && c.text != "Rank"); }),
             costFields = this.getDerivedColumns(),
             columns = Ext.Array.merge(additionalFields, costFields);
+        
+        console.log('column cfgs:', columnCfgs);
 
         additionalFields = _.pluck(additionalFields, 'dataIndex');
 
@@ -2263,6 +2273,8 @@ Ext.define("portfolio-cost-tracking-v2", {
         var exporter = new CArABU.technicalservices.Exporter();
         exporter.on('statusupdate', this._showStatus, this);
 
+        this.logger.log('columns:', columns);
+        
         exporter.fetchExportData(root_model,filters,fetch,columns).then({
             scope: this,
             success: function(csv){
@@ -2345,7 +2357,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             root: {expanded: true}
         }).then({
             success: function (treeGridStore) {
-                treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null});
+                treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null, getUUID: function() { return "'_rollupData"; }});
                 treeGridStore.on('load', this.updateDerivedColumns, this);
                 return treeGridStore;
             },

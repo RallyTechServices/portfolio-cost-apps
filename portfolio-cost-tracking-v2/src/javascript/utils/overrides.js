@@ -19,5 +19,11 @@ Ext.override(Rally.ui.grid.TreeGrid, {
              //override:  Added additional search for column.text
             return _.contains(columnConfigs, column.dataIndex) ? column.dataIndex : _.find(columnConfigs, {dataIndex: column.dataIndex, text: column.text});
         }).compact().value();
-    }
+    },
+    
+//    _getColumnName: function(column) {
+//    	console.log('column', column);
+//        return (_.isString(column) ? column : column && column.dataIndex) || '';
+//    }
 });
+

@@ -122,7 +122,7 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         var customColumns = this.getDerivedColumns() || [],
             columnCfgs = Ext.Array.merge(this.getColumnCfgs() || [], customColumns);
-        this.logger.log('addGridBoard', store, this.modelNames);
+        this.logger.log('addGridBoard', store, this.modelNames, columnCfgs);
 
         this.gridboard = this.add({
             itemId: 'gridboard',
@@ -130,7 +130,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             context: this.getContext(),
             toggleState: 'grid',
             stateful: false,
-            stateId: 'gridboard-18',
+            stateId: 'gridboard-19',
             modelNames: _.clone(this.modelNames),
             plugins: this.getGridBoardPlugins(),
             gridConfig: {
@@ -292,10 +292,13 @@ Ext.define("portfolio-cost-tracking-v2", {
 
     },
     _showExportMenu: function () {
-        var columnCfgs = this.down('rallytreegrid').columnCfgs,
-            additionalFields = _.filter(columnCfgs, function(c){ return (c.xtype === 'rallyfieldcolumn'); }),
+        //var columnCfgs = this.down('rallytreegrid').columnCfgs,
+        var columnCfgs = this.down('rallytreegrid').headerCt.getGridColumns(),
+            additionalFields = _.filter(columnCfgs, function(c){ return (c.xtype === 'rallyfieldcolumn' && c.text != "Rank"); }),
             costFields = this.getDerivedColumns(),
             columns = Ext.Array.merge(additionalFields, costFields);
+        
+        console.log('column cfgs:', columnCfgs);
 
         additionalFields = _.pluck(additionalFields, 'dataIndex');
 
@@ -306,6 +309,8 @@ Ext.define("portfolio-cost-tracking-v2", {
         var exporter = new CArABU.technicalservices.Exporter();
         exporter.on('statusupdate', this._showStatus, this);
 
+        this.logger.log('columns:', columns);
+        
         exporter.fetchExportData(root_model,filters,fetch,columns).then({
             scope: this,
             success: function(csv){
@@ -388,7 +393,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             root: {expanded: true}
         }).then({
             success: function (treeGridStore) {
-                treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null});
+                treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null, getUUID: function() { return "'_rollupData"; }});
                 treeGridStore.on('load', this.updateDerivedColumns, this);
                 return treeGridStore;
             },
