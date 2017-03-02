@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Mar 02 2017 08:49:55 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Mar 02 2017 14:37:04 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Mar 02 2017 08:49:55 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Thu Mar 02 2017 14:37:04 GMT-0800 (PST)";
         var BUILDER = "marjo60";
-        var CHECKSUM = 194533185361;
+        var CHECKSUM = 195468382053;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -662,8 +662,17 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
             var field = c.costField || c.dataIndex || null;
             if (field){
                 var data = this[field];
+                
                 if (Ext.isObject(data)){
-                    rec[field] = data._refObjectName;
+                	if ( !Ext.isEmpty(data._refObjectName) ) {
+                		rec[field] = data._refObjectName;
+                	} else if ( Ext.isArray(data._tagsNameArray) ) {
+                		rec[field] = Ext.Array.map(data._tagsNameArray, function(tag){
+                			return tag.Name;
+                		}).join(';');
+                	} else {
+                		rec[field] = data;
+                	}
                 } else if (Ext.isDate(data)){
                     rec[field] = Rally.util.DateTime.formatWithDefaultDateTime(data);
                 } else {
@@ -2262,8 +2271,6 @@ Ext.define("portfolio-cost-tracking-v2", {
             costFields = this.getDerivedColumns(),
             columns = Ext.Array.merge(additionalFields, costFields);
         
-        console.log('column cfgs:', columnCfgs);
-
         additionalFields = _.pluck(additionalFields, 'dataIndex');
 
         var filters = this.down('rallygridboard').currentCustomFilter.filters || [],

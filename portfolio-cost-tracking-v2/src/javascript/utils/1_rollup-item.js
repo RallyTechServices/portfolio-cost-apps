@@ -44,8 +44,17 @@
             var field = c.costField || c.dataIndex || null;
             if (field){
                 var data = this[field];
+                
                 if (Ext.isObject(data)){
-                    rec[field] = data._refObjectName;
+                	if ( !Ext.isEmpty(data._refObjectName) ) {
+                		rec[field] = data._refObjectName;
+                	} else if ( Ext.isArray(data._tagsNameArray) ) {
+                		rec[field] = Ext.Array.map(data._tagsNameArray, function(tag){
+                			return tag.Name;
+                		}).join(';');
+                	} else {
+                		rec[field] = data;
+                	}
                 } else if (Ext.isDate(data)){
                     rec[field] = Rally.util.DateTime.formatWithDefaultDateTime(data);
                 } else {

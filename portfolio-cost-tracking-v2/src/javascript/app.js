@@ -298,8 +298,6 @@ Ext.define("portfolio-cost-tracking-v2", {
             costFields = this.getDerivedColumns(),
             columns = Ext.Array.merge(additionalFields, costFields);
         
-        console.log('column cfgs:', columnCfgs);
-
         additionalFields = _.pluck(additionalFields, 'dataIndex');
 
         var filters = this.down('rallygridboard').currentCustomFilter.filters || [],
