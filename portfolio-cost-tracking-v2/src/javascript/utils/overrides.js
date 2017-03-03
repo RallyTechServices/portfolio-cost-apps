@@ -20,10 +20,51 @@ Ext.override(Rally.ui.grid.TreeGrid, {
             return _.contains(columnConfigs, column.dataIndex) ? column.dataIndex : _.find(columnConfigs, {dataIndex: column.dataIndex, text: column.text});
         }).compact().value();
     },
-    
-//    _getColumnName: function(column) {
-//    	console.log('column', column);
-//        return (_.isString(column) ? column : column && column.dataIndex) || '';
-//    }
+    _restoreColumnOrder: function(columnConfigs) {
+
+        var currentColumns = this._getColumnConfigsBasedOnCurrentOrder(columnConfigs);
+        var addedColumns = _.filter(columnConfigs, function(config) {
+            return !_.find(currentColumns, {dataIndex: config.dataIndex}) || Ext.isString(config);
+        });
+
+        return currentColumns.concat(addedColumns);
+    },
+    _applyStatefulColumns: function(columns) {
+        if (this.alwaysShowDefaultColumns) {
+            _.each(this.columnCfgs, function(columnCfg) {
+                if (!_.any(columns, {dataIndex: this._getColumnName(columnCfg)})) {
+                    columns.push(columnCfg);
+                }
+            }, this);
+        }
+        if (this.config && this.config.derivedColumns){
+            this.columnCfgs = columns.concat(this.config.derivedColumns);
+        } else {
+            this.columnCfgs = columns;
+        }
+    },
+    _isStatefulColumn: function(columnName) {
+
+        if (this.config && this.config.derivedColumns && this.config.derivedColumns.length > 0){
+            var derivedColNames = _.pluck(this.config.derivedColumns, 'dataIndex');
+            if (Ext.Array.contains(derivedColNames, columnName)){
+                return false;
+            }
+        }
+
+        if (!this.allColumnsStateful) {
+            columnName = columnName.toLowerCase();
+
+            if (this.store.enableHierarchy && columnName === this.treeColumnDataIndex.toLowerCase()) {
+                return false;
+            }
+
+            if (this.enableRanking && columnName === this.rankColumnDataIndex.toLowerCase()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 });
 
