@@ -129,8 +129,6 @@ Ext.define("portfolio-cost-tracking-v2", {
             xtype: 'rallygridboard',
             context: this.getContext(),
             toggleState: 'grid',
-            stateful: false,
-            stateId: 'gridboard-19',
             modelNames: _.clone(this.modelNames),
             plugins: this.getGridBoardPlugins(),
             gridConfig: {
@@ -147,7 +145,6 @@ Ext.define("portfolio-cost-tracking-v2", {
         });
 
         //this.gridboard.on('modeltypeschange', this._onTypeChange, this);
-
         this.fireEvent('gridboardadded', this.gridboard);
     },
     /**
@@ -391,7 +388,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             root: {expanded: true}
         }).then({
             success: function (treeGridStore) {
-                treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null, getUUID: function() { return "'_rollupData"; }});
+                treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null, getUUID: function() { return "_rollupData"; }});
                 treeGridStore.on('load', this.updateDerivedColumns, this);
                 return treeGridStore;
             },
@@ -446,8 +443,7 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         return  [{
             dataIndex: 'Name',
-            text: 'Name',
-            flex: 5
+            text: 'Name'
         },{
             dataIndex: 'Project',
             text: 'Project',

@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Mar 02 2017 14:37:04 GMT-0800 (PST) -->
+    <!--  Build Date: Fri Mar 03 2017 16:20:47 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Mar 02 2017 14:37:04 GMT-0800 (PST)";
-        var BUILDER = "marjo60";
-        var CHECKSUM = 195468382053;
+        var APP_BUILD_DATE = "Fri Mar 03 2017 16:20:47 GMT-0700 (MST)";
+        var BUILDER = "kcorkan";
+        var CHECKSUM = 201679530224;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -995,11 +995,52 @@ Ext.override(Rally.ui.grid.TreeGrid, {
             return _.contains(columnConfigs, column.dataIndex) ? column.dataIndex : _.find(columnConfigs, {dataIndex: column.dataIndex, text: column.text});
         }).compact().value();
     },
-    
-//    _getColumnName: function(column) {
-//    	console.log('column', column);
-//        return (_.isString(column) ? column : column && column.dataIndex) || '';
-//    }
+    _restoreColumnOrder: function(columnConfigs) {
+
+        var currentColumns = this._getColumnConfigsBasedOnCurrentOrder(columnConfigs);
+        var addedColumns = _.filter(columnConfigs, function(config) {
+            return !_.find(currentColumns, {dataIndex: config.dataIndex}) || Ext.isString(config);
+        });
+
+        return currentColumns.concat(addedColumns);
+    },
+    _applyStatefulColumns: function(columns) {
+        if (this.alwaysShowDefaultColumns) {
+            _.each(this.columnCfgs, function(columnCfg) {
+                if (!_.any(columns, {dataIndex: this._getColumnName(columnCfg)})) {
+                    columns.push(columnCfg);
+                }
+            }, this);
+        }
+        if (this.config && this.config.derivedColumns){
+            this.columnCfgs = columns.concat(this.config.derivedColumns);
+        } else {
+            this.columnCfgs = columns;
+        }
+    },
+    _isStatefulColumn: function(columnName) {
+
+        if (this.config && this.config.derivedColumns && this.config.derivedColumns.length > 0){
+            var derivedColNames = _.pluck(this.config.derivedColumns, 'dataIndex');
+            if (Ext.Array.contains(derivedColNames, columnName)){
+                return false;
+            }
+        }
+
+        if (!this.allColumnsStateful) {
+            columnName = columnName.toLowerCase();
+
+            if (this.store.enableHierarchy && columnName === this.treeColumnDataIndex.toLowerCase()) {
+                return false;
+            }
+
+            if (this.enableRanking && columnName === this.rankColumnDataIndex.toLowerCase()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 });
 
 
@@ -2102,8 +2143,6 @@ Ext.define("portfolio-cost-tracking-v2", {
             xtype: 'rallygridboard',
             context: this.getContext(),
             toggleState: 'grid',
-            stateful: false,
-            stateId: 'gridboard-19',
             modelNames: _.clone(this.modelNames),
             plugins: this.getGridBoardPlugins(),
             gridConfig: {
@@ -2120,7 +2159,6 @@ Ext.define("portfolio-cost-tracking-v2", {
         });
 
         //this.gridboard.on('modeltypeschange', this._onTypeChange, this);
-
         this.fireEvent('gridboardadded', this.gridboard);
     },
     /**
@@ -2364,7 +2402,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             root: {expanded: true}
         }).then({
             success: function (treeGridStore) {
-                treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null, getUUID: function() { return "'_rollupData"; }});
+                treeGridStore.model.addField({name: '_rollupData', type: 'auto', defaultValue: null, getUUID: function() { return "_rollupData"; }});
                 treeGridStore.on('load', this.updateDerivedColumns, this);
                 return treeGridStore;
             },
@@ -2419,8 +2457,7 @@ Ext.define("portfolio-cost-tracking-v2", {
 
         return  [{
             dataIndex: 'Name',
-            text: 'Name',
-            flex: 5
+            text: 'Name'
         },{
             dataIndex: 'Project',
             text: 'Project',
