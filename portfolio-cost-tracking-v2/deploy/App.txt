@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Mar 03 2017 16:20:47 GMT-0700 (MST) -->
+    <!--  Build Date: Mon Mar 06 2017 13:55:49 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Mar 03 2017 16:20:47 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Mon Mar 06 2017 13:55:49 GMT-0700 (MST)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 201679530224;
+        var CHECKSUM = 212672331138;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -973,8 +973,41 @@ Ext.define('CArABU.technicalservices.NumberFieldComboBox', {
     }
 });
 
+Ext.override(Rally.ui.combobox.PortfolioItemTypeComboBox, {
+    getCurrentView: function () {
+        return {piTypePicker: this.getRecord().get('_ref')};
+    }
+});
+
+
+Ext.override(Rally.ui.gridboard.GridBoard, {
+    setCurrentView: function(view) {
+        this._setSharedViewProperties(this.plugins, view);
+
+        if (view.toggleState === 'grid') {
+            Ext.state.Manager.set(this._getGridConfig().stateId, _.pick(view, ['columns', 'sorters']));
+        } else if (view.toggleState === 'board') {
+            Ext.state.Manager.set(this._getBoardConfig().fieldsStateId, view.fields);
+        }
+        Ext.state.Manager.set(this.stateId, _.pick(view, ['toggleState']));
+
+        //need to override so we can pass the view back to the app, alternatively we could override _setSharedViewProperties so that
+        //we can set the value of hte additionalCmps
+        this.fireEvent('viewchange', this, view);
+    }
+});
+
 
 Ext.override(Rally.ui.grid.TreeGrid, {
+
+    //_setColumnFlex: function(column) {
+    //    if (column.width) {
+    //        column.width =  column.width; //lets consider the derived columns
+    //        //delete column.width;
+    //    } else if (!_.isNumber(column.flex)) {
+    //        column.flex = Rally.ui.grid.FieldColumnFactory.defaultFlexValue;
+    //    }
+    //},
     _mergeColumnConfigs: function(newColumns, oldColumns) {
 
         var mergedColumns= _.map(newColumns, function(newColumn) {
@@ -986,7 +1019,9 @@ Ext.override(Rally.ui.grid.TreeGrid, {
             return newColumn;
         }, this);
 
+
         mergedColumns = mergedColumns.concat(this.config.derivedColumns);
+
         return mergedColumns;
     },
     _getColumnConfigsBasedOnCurrentOrder: function(columnConfigs) {
@@ -1042,7 +1077,6 @@ Ext.override(Rally.ui.grid.TreeGrid, {
         return true;
     }
 });
-
 
 Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
     requires: ['Deft.promise.Promise'],
@@ -2056,6 +2090,7 @@ Ext.define("portfolio-cost-tracking-v2", {
 
     launch: function(){
         //todo: check for RPM?
+
         this.loadModelNames().then({
             success: function (modelNames) {
                 this.modelNames = modelNames;
@@ -2153,12 +2188,36 @@ Ext.define("portfolio-cost-tracking-v2", {
                     items: [{
                         xtype: 'snapshotbulkmenuitem'
                     }]
+                },
+                listeners: {
+                    beforerender: function(g){
+                        Ext.Array.each(g.columns, function(c){
+                            if (c.flex > 10){
+                                //The flex was set by the width before this.
+                                c.width = c.flex;
+                                delete c.flex;
+                            }
+                        });
+                    }
                 }
+            },
+            sharedViewAdditionalCmps: [this.piTypePicker],
+            listeners: {
+                viewchange: function(gb, view){
+                    console.log('view',view,this.piTypePicker && this.piTypePicker.getValue());
+                    if (this.piTypePicker && view && this.piTypePicker.getValue() !== view.piTypePicker){
+                        this.piTypePicker.setValue(view.piTypePicker);
+                        this._onTypeChange(this.piTypePicker);
+                    } else {
+                        this.loadGridBoard();
+                    }
+
+                },
+                scope: this
             },
             height: this.getHeight()
         });
 
-        //this.gridboard.on('modeltypeschange', this._onTypeChange, this);
         this.fireEvent('gridboardadded', this.gridboard);
     },
     /**
@@ -2170,6 +2229,8 @@ Ext.define("portfolio-cost-tracking-v2", {
                 ptype: 'rallygridboardinlinefiltercontrol',
                 inlineFilterButtonConfig: {
                     modelNames: this.modelNames,
+                    stateful: true,
+                    stateId: this.getContext().getScopedStateId('pc-filter'),
                     inlineFilterPanelConfig: {
                         collapsed: false,
                         quickFilterPanelConfig: {
@@ -2185,6 +2246,16 @@ Ext.define("portfolio-cost-tracking-v2", {
             modelNames: this.modelNames,
             stateful: true,
             stateId: this.getContext().getScopedStateId('field-picker')
+        });
+
+
+        plugins.push({
+            ptype: 'rallygridboardsharedviewcontrol',
+            stateful: true,
+            stateId: this.getContext().getScopedStateId('pc-shared-view'),
+            stateEvents: ['select','beforedestroy'],
+            margin: 10
+
         });
 
         plugins = plugins.concat(this.getActionsMenuConfig() || []);
@@ -2223,7 +2294,10 @@ Ext.define("portfolio-cost-tracking-v2", {
         if (!this.down('#selector_box')){
             this.add({
                 itemId: 'selector_box',
-                layout: 'hbox'
+                layout: 'hbox',
+                style: {
+                    border: 0
+                }
             });
         }
         this.down('#selector_box').removeAll();
@@ -2358,7 +2432,6 @@ Ext.define("portfolio-cost-tracking-v2", {
         portfolioHash[records[0].get('_type').toLowerCase()] = records;
         this.rollupData.addRollupRecords(portfolioHash, stories);
         this.rollupData.updateModels(records);
-        this.down('rallygridboard').getGridOrBoard().getView().refresh();
         me._showStatus(null);
     },
     _showStatus: function(message){
@@ -2372,6 +2445,8 @@ Ext.define("portfolio-cost-tracking-v2", {
         } else {
             Rally.ui.notify.Notifier.hide();
         }
+
+        this.down('rallygridboard').getGridOrBoard().updateLayout(); //getView().refresh();
     },
     _getExportItems: function() {
         return [{
@@ -2429,6 +2504,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             dataIndex: '_rollupData',
             costField: '_rollupDataActualCost',
             sortable: false,
+            flex: 1,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataActualCost')
         },{
             text: "Remaining Cost",
@@ -2436,6 +2512,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataRemainingCost',
+            flex: 1,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataRemainingCost')
         }, {
             text: 'Total Projected',
@@ -2443,6 +2520,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataTotalCost',
+            flex: 1,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataTotalCost')
         },{
             text: 'Preliminary Budget',
@@ -2450,6 +2528,7 @@ Ext.define("portfolio-cost-tracking-v2", {
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataPreliminaryBudget',
+            flex: 1,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataPreliminaryBudget')
         }];
     },

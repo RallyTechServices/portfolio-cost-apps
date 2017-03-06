@@ -1,5 +1,38 @@
+Ext.override(Rally.ui.combobox.PortfolioItemTypeComboBox, {
+    getCurrentView: function () {
+        return {piTypePicker: this.getRecord().get('_ref')};
+    }
+});
+
+
+Ext.override(Rally.ui.gridboard.GridBoard, {
+    setCurrentView: function(view) {
+        this._setSharedViewProperties(this.plugins, view);
+
+        if (view.toggleState === 'grid') {
+            Ext.state.Manager.set(this._getGridConfig().stateId, _.pick(view, ['columns', 'sorters']));
+        } else if (view.toggleState === 'board') {
+            Ext.state.Manager.set(this._getBoardConfig().fieldsStateId, view.fields);
+        }
+        Ext.state.Manager.set(this.stateId, _.pick(view, ['toggleState']));
+
+        //need to override so we can pass the view back to the app, alternatively we could override _setSharedViewProperties so that
+        //we can set the value of hte additionalCmps
+        this.fireEvent('viewchange', this, view);
+    }
+});
+
 
 Ext.override(Rally.ui.grid.TreeGrid, {
+
+    //_setColumnFlex: function(column) {
+    //    if (column.width) {
+    //        column.width =  column.width; //lets consider the derived columns
+    //        //delete column.width;
+    //    } else if (!_.isNumber(column.flex)) {
+    //        column.flex = Rally.ui.grid.FieldColumnFactory.defaultFlexValue;
+    //    }
+    //},
     _mergeColumnConfigs: function(newColumns, oldColumns) {
 
         var mergedColumns= _.map(newColumns, function(newColumn) {
@@ -11,7 +44,9 @@ Ext.override(Rally.ui.grid.TreeGrid, {
             return newColumn;
         }, this);
 
+
         mergedColumns = mergedColumns.concat(this.config.derivedColumns);
+
         return mergedColumns;
     },
     _getColumnConfigsBasedOnCurrentOrder: function(columnConfigs) {
@@ -67,4 +102,3 @@ Ext.override(Rally.ui.grid.TreeGrid, {
         return true;
     }
 });
-
