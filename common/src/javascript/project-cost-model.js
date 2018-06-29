@@ -37,6 +37,51 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                             return Rally.util.DateTime.fromIsoString(obj.asOfDate);
                         }
                     }
+                },{
+                    name: '__comments',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.comments;
+                        }
+                    }
+                },{
+                    name: '__avgDayRate',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.avgDayRate;
+                        }
+                    }
+                },{
+                    name: '__noOfTeamMembers',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.noOfTeamMembers;
+                        }
+                    }
+                },{
+                    name: '__teamType',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.teamType;
+                        }
+                    }
+                },{
+                    name: '__sprintDays',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.sprintDays;
+                        }
+                    }
                 }];
 
                 var new_model = Ext.define(newModelName, {
@@ -44,7 +89,7 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                     logger: new Rally.technicalservices.Logger(),
                     fields: default_fields,
                     prefPrefix: prefPrefix,
-                    setCostForProject: function(cost, asOfDate, userName){
+                    setCostForProject: function(cost, asOfDate, userName, comments, avgDayRate, noOfTeamMembers,teamType,sprintDays){
                         var isoDate = Rally.util.DateTime.toIsoString(asOfDate),
                             name = this.prefPrefix + isoDate;
 
@@ -53,9 +98,14 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                         var obj = {
                             cost: cost,
                             asOfDate: isoDate,
-                            userDisplayName: userName
+                            userDisplayName: userName,
+                            comments: comments,
+                            avgDayRate: avgDayRate,
+                            noOfTeamMembers: noOfTeamMembers,
+                            teamType: teamType,
+                            sprintDays:sprintDays
                         };
-                        this.logger.log('setCostPerProject', name, obj, cost, asOfDate, userName);
+                        this.logger.log('setCostPerProject', name, obj, cost, asOfDate, userName, comments, avgDayRate, noOfTeamMembers,teamType,sprintDays);
 
                         this.set('Value', Ext.JSON.encode(obj));
                     }
