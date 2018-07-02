@@ -167,11 +167,24 @@ Ext.define("team-cost-admin", {
                 itemId: 'nb-cost',
                 fieldLabel: 'Cost',
                 margin: margin,
-                width: 250,
+                width: 175,
                 labelWidth: 100,
                 labelAlign: 'right',
                 minValue: 1,
                 value: this.defaultCost
+            },{
+                xtype: 'rallynumberfield',
+                itemId: 'nb-sprint-days',
+                fieldLabel: 'Sprint Days',
+                margin: margin,
+                width: 175,
+                labelWidth: 100,
+                labelAlign: 'right',
+                minValue: 1,
+                listeners:{
+                    change:me._calculateCost,
+                    scope:me
+                }
             },{
                 xtype: 'rallydatefield',
                 itemId: 'dt-asOfDate',
@@ -183,23 +196,10 @@ Ext.define("team-cost-admin", {
                 value: new Date()
             },{
                 xtype: 'rallynumberfield',
-                itemId: 'nb-sprint-days',
-                fieldLabel: 'Sprint Days',
-                margin: margin,
-                width: 250,
-                labelWidth: 100,
-                labelAlign: 'right',
-                minValue: 1,
-                listeners:{
-                    change:me._calculateCost,
-                    scope:me
-                }
-            },{
-                xtype: 'rallynumberfield',
                 itemId: 'nb-number-of-sprints',
                 fieldLabel: 'Number of Sprints',
                 margin: margin,
-                width: 250,
+                width: 175,
                 labelWidth: 100,
                 labelAlign: 'right',
                 minValue: 1,
@@ -233,7 +233,7 @@ Ext.define("team-cost-admin", {
                 itemId: 'nb-avg-day-rate',
                 fieldLabel: 'Average Day Rate',
                 margin: margin,
-                width: 250,
+                width: 175,
                 labelWidth: 100,
                 labelAlign: 'right',
                 minValue: 1,
@@ -247,7 +247,7 @@ Ext.define("team-cost-admin", {
                 itemId: 'nb-team-members',
                 fieldLabel: '# Team Members',
                 margin: margin,
-                width: 250,
+                width: 175,
                 labelWidth: 100,
                 labelAlign: 'right',
                 minValue: 1,
@@ -319,23 +319,27 @@ Ext.define("team-cost-admin", {
 
     _calculateCost:function(){
         var team_type = this.down('#cb-team-type') && this.down('#cb-team-type').getValue() || null;
-        if(!team_type || team_type == ""){
-            this._showError('Error: Team Type must be selected');
-            return;
-        }
+        // if(!team_type || team_type == ""){
+        //     this._showError('Error: Team Type must be selected');
+        //     return;
+        // }
 
         var spoc = 0;
         var team_members = this.down('#nb-team-members').getValue() > 0 ?  this.down('#nb-team-members').getValue() : 1,
             day_day_rate = this.down('#nb-avg-day-rate').getValue(),
-            total_sprint_days = this.down('#nb-sprint-days').getValue() > 0 ? this.down('#nb-sprint-days').getValue():1; 
+            total_sprint_days = this.down('#nb-sprint-days').getValue() > 0 ? this.down('#nb-sprint-days').getValue():1, 
+            avg_velocity = this._getAverageVelocity(),
+            avg_story_count = this._getAverageStoryCount();
 
-        if('Scrum' == team_type){
-            spoc = ((total_sprint_days * team_members * day_day_rate) / this._getAverageVelocity());
+        if('Scrum' == team_type && avg_velocity > 0){
+            spoc = ((total_sprint_days * team_members * day_day_rate) / avg_velocity);
         }
 
-        if('Kanban' == team_type){
-            spoc = ((total_sprint_days * team_members * day_day_rate) / this._getAverageStoryCount());
+        if('Kanban' == team_type && avg_story_count > 0){
+            spoc = ((total_sprint_days * team_members * day_day_rate) / avg_story_count);
         }
+
+
         this.down('#nb-cost').setValue(Ext.util.Format.round(spoc,2));
 
     },
@@ -365,7 +369,7 @@ Ext.define("team-cost-admin", {
                 me.setLoading(false);
                 console.log('iterations>>',records);
                 if(records.length < 1){
-                    this._showError('Error: No Iterations found');
+                    this._showWarning('Warning: No Iterations found');
                     this.down('#nb-sprint-days').setValue(0);
                 }else{
 
@@ -532,6 +536,12 @@ Ext.define("team-cost-admin", {
         this.logger.log('_showError', msg);
         Rally.ui.notify.Notifier.showError({ message: msg });
     },
+
+    _showWarning: function(msg){
+        this.logger.log('_showWarning', msg);
+        Rally.ui.notify.Notifier.showWarning({ message: msg });
+    },
+
     getOptions: function() {
         return [
             {
