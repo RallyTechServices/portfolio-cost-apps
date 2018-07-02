@@ -13,11 +13,15 @@ Ext.define("team-cost-admin", {
     },
     minHeight: 500,
     defaultCost: 1000,
+    defaultDayRate: 200,
+    defaultSprintDays: 14,
     currency: "$",
+    timebox_limit : 10,
                         
     launch: function() {
         this._initializeApp();
     },
+
     _fetchPreferenceModel: function(){
         var deferred = Ext.create('Deft.Deferred');
         this.logger.log('_fetchPreferenceModel');
@@ -28,6 +32,7 @@ Ext.define("team-cost-admin", {
         });
         return deferred;
     },
+
     _buildGrid: function(){
 
         this.logger.log('_buildGrid');
@@ -56,8 +61,6 @@ Ext.define("team-cost-admin", {
                 }
             }
         );
-
-
 
         this._fetchPreferenceModel().then({
             success: function(model){
@@ -104,13 +107,25 @@ Ext.define("team-cost-admin", {
             scope: this
         });
     },
+
     _initializeApp: function(){
+        var me = this;
         this.logger.log('_initializeApp');
 
         if (this.down('#selector_box')){
             this.down('#selector_box').destroy();
         }
+        if (this.down('#selector_box_2')){
+            this.down('#selector_box_2').destroy();
+        }
 
+        var team_types = Ext.create('Ext.data.Store', {
+            fields: ['name'],
+            data : [
+                {"name":"Scrum"},
+                {"name":"Kanban"}
+            ]
+        });
 
         var margin = 5;
         this.add({
@@ -131,32 +146,131 @@ Ext.define("team-cost-admin", {
                     autoLoad: true,
                     remoteFilter: false,
                     limit: 'Infinity',
-                    fetch: ['Name','_ref'],
+                    fetch: ['Name','_ref','TeamMembers','c_TeamType'],
                     sorters: [{
                         property: 'Name',
                         direction: 'ASC'
                     }]
                 },
                 displayField: 'Name',
-                valueField: '_ref'
+                valueField: '_ref',
+                listeners: {
+                    change: function(cb){
+                        console.log('Project CB', cb);
+                        me.project = cb.getRecord();
+                        me._prePopulateValues(me.project);
+                    },
+                    scope:me
+                }
             },{
                 xtype: 'rallynumberfield',
                 itemId: 'nb-cost',
                 fieldLabel: 'Cost',
                 margin: margin,
-                width: 200,
-                labelWidth: 75,
+                width: 175,
+                labelWidth: 100,
                 labelAlign: 'right',
                 minValue: 1,
                 value: this.defaultCost
+            },{
+                xtype: 'rallynumberfield',
+                itemId: 'nb-sprint-days',
+                fieldLabel: 'Sprint Days',
+                margin: margin,
+                width: 175,
+                labelWidth: 100,
+                labelAlign: 'right',
+                minValue: 1,
+                listeners:{
+                    change:me._calculateCost,
+                    scope:me
+                }
             },{
                 xtype: 'rallydatefield',
                 itemId: 'dt-asOfDate',
                 fieldLabel: 'as Of Date',
                 margin: margin,
                 labelAlign: 'right',
-                labelWidth: 75,
+                width: 250,
+                labelWidth: 100,
                 value: new Date()
+            },{
+                xtype: 'rallynumberfield',
+                itemId: 'nb-number-of-sprints',
+                fieldLabel: 'Number of Sprints',
+                margin: margin,
+                width: 175,
+                labelWidth: 100,
+                labelAlign: 'right',
+                minValue: 1,
+                value: me.timebox_limit,
+                listeners:{
+                    change: function(){
+                        me._prePopulateValues(me.project);
+                    },
+                    scope:me
+                }
+            }]
+        });
+
+        this.add({
+            xtype: 'container',
+            itemId: 'selector_box_2',
+            layout: 'hbox',
+
+            items: [{
+                xtype: 'rallytextfield',
+                itemId: 'tx-comment',
+                fieldLabel: 'Comments',
+                margin: margin,
+                width: 300,
+                labelWidth: 75,
+                labelAlign: 'right',
+                minValue: 1,
+                emptyText: 'Enter Comments here...'
+            },{
+                xtype: 'rallynumberfield',
+                itemId: 'nb-avg-day-rate',
+                fieldLabel: 'Average Day Rate',
+                margin: margin,
+                width: 175,
+                labelWidth: 100,
+                labelAlign: 'right',
+                minValue: 1,
+                value: this.defaultDayRate,
+                listeners:{
+                    change:me._calculateCost,
+                    scope:me
+                }
+            },{
+                xtype: 'rallynumberfield',
+                itemId: 'nb-team-members',
+                fieldLabel: '# Team Members',
+                margin: margin,
+                width: 175,
+                labelWidth: 100,
+                labelAlign: 'right',
+                minValue: 1,
+                listeners:{
+                    change:me._calculateCost,
+                    scope:me
+                }
+            },{
+                xtype: 'rallycombobox',
+                itemId: 'cb-team-type',
+                fieldLabel: 'Team Type',
+                store: team_types,
+                queryMode: 'local',
+                displayField: 'name',
+                valueField: 'name',
+                labelAlign: 'right',
+                width: 250,
+                labelWidth: 100,
+                allowNoEntry: true,
+                listeners:{
+                    change:me._calculateCost,
+                    scope:me
+                }
             },{
                 xtype: 'rallybutton',
                 text: '+Add',
@@ -174,9 +288,140 @@ Ext.define("team-cost-admin", {
                     click: this._export
                 }
             }]
-        });
+        });        
         this._buildGrid();
     },
+
+    _prePopulateValues: function(project){
+        var me= this;
+        //this.down('#nb-sprint-days').setValue(this._getTotalSprintDays());
+        this._fetchIterations().then({
+            success: function(records){
+                console.log('_fetchIterations', records);
+
+                var timebox_limit = me.down('#nb-number-of-sprints').getValue() || 1;
+
+                var total_points = 0;
+                me.storyCount = Ext.util.Format.round(records.length / timebox_limit, 2);
+                _.each(records,function(story){
+                    total_points += story.get('PlanEstimate') || 0;
+                });
+                me.averageVelocity =  Ext.util.Format.round(total_points / timebox_limit, 2);
+
+                this.down('#nb-team-members').setValue(project && project.get('TeamMembers').Count || 1);
+                this.down('#cb-team-type').setValue(project && project.get('c_TeamType') || null);
+
+                this._calculateCost();
+            },
+            scope:this
+        })
+    },
+
+    _calculateCost:function(){
+        var team_type = this.down('#cb-team-type') && this.down('#cb-team-type').getValue() || null;
+        // if(!team_type || team_type == ""){
+        //     this._showError('Error: Team Type must be selected');
+        //     return;
+        // }
+
+        var spoc = 0;
+        var team_members = this.down('#nb-team-members').getValue() > 0 ?  this.down('#nb-team-members').getValue() : 1,
+            day_day_rate = this.down('#nb-avg-day-rate').getValue(),
+            total_sprint_days = this.down('#nb-sprint-days').getValue() > 0 ? this.down('#nb-sprint-days').getValue():1, 
+            avg_velocity = this._getAverageVelocity(),
+            avg_story_count = this._getAverageStoryCount();
+
+        if('Scrum' == team_type && avg_velocity > 0){
+            spoc = ((total_sprint_days * team_members * day_day_rate) / avg_velocity);
+        }
+
+        if('Kanban' == team_type && avg_story_count > 0){
+            spoc = ((total_sprint_days * team_members * day_day_rate) / avg_story_count);
+        }
+
+
+        this.down('#nb-cost').setValue(Ext.util.Format.round(spoc,2));
+
+    },
+
+
+    _fetchIterations: function() {
+
+        this.logger.log("_fetchIterations");
+
+        var me = this,
+            deferred = Ext.create('Deft.Deferred')
+            var timebox_limit = me.down('#nb-number-of-sprints').getValue() || 1;
+                
+        me.setLoading("Fetching iterations...");
+        
+        var config = {
+            model:  'Iteration',
+            limit: timebox_limit,
+            pageSize: timebox_limit,
+            fetch: ['Name','StartDate','EndDate','WorkProducts','PlanEstimate'],
+            filters: [{property:'EndDate', operator: '<=', value: Rally.util.DateTime.toIsoString(new Date)},{property:'Project',value:me.project.get('_ref')}],
+            sorters: [{property:'EndDate', direction:'DESC'}]
+        };
+
+        me.loadWsapiRecords(config).then({
+            success: function(records){
+                me.setLoading(false);
+                console.log('iterations>>',records);
+                if(records.length < 1){
+                    this._showWarning('Warning: No Iterations found');
+                    this.down('#nb-sprint-days').setValue(0);
+                }else{
+
+                    var last_sprint = records[0];
+                    var sprint_days = Rally.util.DateTime.getDifference(last_sprint.get('EndDate'),last_sprint.get('StartDate'),'day') || 0;
+                    this.down('#nb-sprint-days').setValue(sprint_days);
+                    // this.down('#nb-sprint-days')
+                    var story_filter = [];
+
+                    _.each(records, function(iteration){
+                        story_filter.push({property:'Iteration.Name', value:iteration.get('Name') });
+                    });
+
+                    story_filter = Rally.data.wsapi.Filter.or(story_filter).and( {property:'ScheduleState', value:'Accepted' });
+                    
+                    console.log('story filter', story_filter.toString() );
+                    var story_config = {
+                        model:  'HierarchicalRequirement',
+                        fetch: ['Name','PlanEstimate','Iteration'],
+                        filters: story_filter
+                    };
+                    me.loadWsapiRecords(story_config).then({
+                        success: function(records){
+                            console.log('Stories',records);
+
+                            deferred.resolve(records);
+                        },
+                        scope:me
+                    });
+
+                }
+            },
+            failure: function(msg) {
+                me.setLoading(false);
+                deferred.reject(msg);
+            },
+            scope: me
+        });
+
+        return deferred.promise;
+    },
+
+    _getAverageVelocity: function(){
+        console.log('_getAverageVelocity', this.averageVelocity);
+        return this.averageVelocity || 0;
+    },
+
+    _getAverageStoryCount: function(){
+        console.log('_getAverageStoryCount', this.storyCount);
+        return this.storyCount || 0;
+    },
+
     _export: function(){
         this.logger.log('_export');
         var exporter = Ext.create('CArABU.technicalservices.Exporter');
@@ -187,11 +432,17 @@ Ext.define("team-cost-admin", {
             exporter.saveCSVToFile(csv, fileName);
         }
     },
+
     _addCost: function(){
         var team = this.down('#cb-team') && this.down('#cb-team').getRecord(),
             cost = this.down('#nb-cost') && this.down('#nb-cost').getValue(),
             asOfDate = this.down('#dt-asOfDate') && this.down('#dt-asOfDate').getValue() || new Date(),
-            userName = this.getContext().getUser().UserName;
+            userName = this.getContext().getUser().UserName,
+            avgDayRate = this.down('#nb-avg-day-rate') && this.down('#nb-avg-day-rate').getValue(),
+            noOfTeamMembers = this.down('#nb-team-members') && this.down('#nb-team-members').getValue(),
+            teamType = this.down('#cb-team-type') && this.down('#cb-team-type').getValue(),
+            sprintDays = this.down('#nb-sprint-days') && this.down('#nb-sprint-days').getValue(),
+            comments = this.down('#tx-comment') && this.down('#tx-comment').getValue();
 
         this.logger.log('_addCost', team, cost, asOfDate, userName);
         var grid = this.down('rallygrid');
@@ -200,13 +451,14 @@ Ext.define("team-cost-admin", {
                 Project: team.get('_ref'),
                 Workspace: this.getContext().getWorkspace()._ref
             });
-            newPref.setCostForProject(cost, asOfDate, userName);
+            newPref.setCostForProject(cost, asOfDate, userName,comments,avgDayRate,noOfTeamMembers,teamType,sprintDays);
             if (this._validate(grid.getStore(), newPref)){
                 newPref.save();
                 grid.getStore().add(newPref);
             }
         }
     },
+
     _validate: function(store, newPref){
         //verify that we aren't adding dups...
         var dup = false;
@@ -248,13 +500,48 @@ Ext.define("team-cost-admin", {
             {dataIndex: '__asOfDate', text: 'As of Date', flex: 1, renderer: function(v){
                 return Rally.util.DateTime.format(v, 'Y-m-d');
             }},
-            {dataIndex: '__userDisplayName', text: 'User', flex: 2}];
+            {dataIndex: '__userDisplayName', text: 'User', flex: 2},
+            {dataIndex: '__sprintDays', text: 'Sprint Days', flex: 2},
+            {dataIndex: '__avgDayRate', text: 'Average Day Rate', flex: 2},
+            {dataIndex: '__noOfTeamMembers', text: '# Team Members', flex: 2},
+            {dataIndex: '__teamType', text: 'Team Type', flex: 2},
+            {dataIndex: '__comments', text: 'Comments', flex: 2}];
+    },
+
+    loadWsapiRecords: function(config,returnOperation){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+                
+        var default_config = {
+            model: 'Defect',
+            fetch: ['ObjectID']
+        };
+        Ext.create('Rally.data.wsapi.Store', Ext.Object.merge(default_config,config)).load({
+            callback : function(records, operation, successful) {
+                if (successful){
+                    if ( returnOperation ) {
+                        deferred.resolve(operation);
+                    } else {
+                        deferred.resolve(records);
+                    }
+                } else {
+                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+                }
+            }
+        });
+        return deferred.promise;
     },
 
     _showError: function(msg){
         this.logger.log('_showError', msg);
         Rally.ui.notify.Notifier.showError({ message: msg });
     },
+
+    _showWarning: function(msg){
+        this.logger.log('_showWarning', msg);
+        Rally.ui.notify.Notifier.showWarning({ message: msg });
+    },
+
     getOptions: function() {
         return [
             {
