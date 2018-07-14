@@ -17,6 +17,12 @@ Ext.define("team-cost-admin", {
     defaultSprintDays: 14,
     currency: "$",
     timebox_limit : 10,
+
+    config: {
+        defaultSettings: {
+            teamTypeField: 'c_TeamType'
+        }
+    },    
                         
     launch: function() {
         this._initializeApp();
@@ -146,7 +152,7 @@ Ext.define("team-cost-admin", {
                     autoLoad: true,
                     remoteFilter: false,
                     limit: 'Infinity',
-                    fetch: ['Name','_ref','TeamMembers','c_TeamType'],
+                    fetch: ['Name','_ref','TeamMembers',me.getSetting('teamTypeField')],
                     sorters: [{
                         property: 'Name',
                         direction: 'ASC'
@@ -175,7 +181,20 @@ Ext.define("team-cost-admin", {
             },{
                 xtype: 'rallynumberfield',
                 itemId: 'nb-sprint-days',
-                fieldLabel: 'Sprint Days',
+                fieldLabel: 'Iteration /<br>Sprint Days',
+                margin: margin,
+                width: 175,
+                labelWidth: 100,
+                labelAlign: 'right',
+                minValue: 1,
+                listeners:{
+                    change:me._calculateCost,
+                    scope:me
+                }
+            },{
+                xtype: 'rallynumberfield',
+                itemId: 'nb-average-velocity',
+                fieldLabel: 'Average <br>Velocity',
                 margin: margin,
                 width: 175,
                 labelWidth: 100,
@@ -256,6 +275,19 @@ Ext.define("team-cost-admin", {
                     scope:me
                 }
             },{
+                xtype: 'rallynumberfield',
+                itemId: 'nb-average-story-count',
+                fieldLabel: 'Average <br>Story Count',
+                margin: margin,
+                width: 175,
+                labelWidth: 100,
+                labelAlign: 'right',
+                minValue: 1,
+                listeners:{
+                    change:me._calculateCost,
+                    scope:me
+                }
+            },{
                 xtype: 'rallycombobox',
                 itemId: 'cb-team-type',
                 fieldLabel: 'Team Type',
@@ -287,7 +319,13 @@ Ext.define("team-cost-admin", {
                     scope: this,
                     click: this._export
                 }
-            }]
+            }
+            // ,{
+            //      xtype: 'rallyfieldpicker',
+            //      autoExpand: false,
+            //      modelTypes: ['Project']
+            //  }
+             ]
         });        
         this._buildGrid();
     },
@@ -302,14 +340,15 @@ Ext.define("team-cost-admin", {
                 var timebox_limit = me.down('#nb-number-of-sprints').getValue() || 1;
 
                 var total_points = 0;
-                me.storyCount = Ext.util.Format.round(records.length / timebox_limit, 2);
+                this.down('#nb-average-story-count').setValue(Ext.util.Format.round(records.length / timebox_limit, 2));
+
                 _.each(records,function(story){
                     total_points += story.get('PlanEstimate') || 0;
                 });
-                me.averageVelocity =  Ext.util.Format.round(total_points / timebox_limit, 2);
+                this.down('#nb-average-velocity').setValue(Ext.util.Format.round(total_points / timebox_limit, 2));
 
                 this.down('#nb-team-members').setValue(project && project.get('TeamMembers').Count || 1);
-                this.down('#cb-team-type').setValue(project && project.get('c_TeamType') || null);
+                this.down('#cb-team-type').setValue(project && project.get(me.getSetting('teamTypeField')) || null);
 
                 this._calculateCost();
             },
@@ -328,8 +367,9 @@ Ext.define("team-cost-admin", {
         var team_members = this.down('#nb-team-members').getValue() > 0 ?  this.down('#nb-team-members').getValue() : 1,
             day_day_rate = this.down('#nb-avg-day-rate').getValue(),
             total_sprint_days = this.down('#nb-sprint-days').getValue() > 0 ? this.down('#nb-sprint-days').getValue():1, 
-            avg_velocity = this._getAverageVelocity(),
-            avg_story_count = this._getAverageStoryCount();
+
+            avg_velocity = this.down('#nb-average-velocity').getValue();
+            avg_story_count = this.down('#nb-average-story-count').getValue();
 
         if('Scrum' == team_type && avg_velocity > 0){
             spoc = ((total_sprint_days * team_members * day_day_rate) / avg_velocity);
@@ -412,11 +452,6 @@ Ext.define("team-cost-admin", {
         return deferred.promise;
     },
 
-    _getAverageVelocity: function(){
-        console.log('_getAverageVelocity', this.averageVelocity);
-        return this.averageVelocity || 0;
-    },
-
     _getAverageStoryCount: function(){
         console.log('_getAverageStoryCount', this.storyCount);
         return this.storyCount || 0;
@@ -442,6 +477,9 @@ Ext.define("team-cost-admin", {
             noOfTeamMembers = this.down('#nb-team-members') && this.down('#nb-team-members').getValue(),
             teamType = this.down('#cb-team-type') && this.down('#cb-team-type').getValue(),
             sprintDays = this.down('#nb-sprint-days') && this.down('#nb-sprint-days').getValue(),
+            averageVelocity = this.down('#nb-average-velocity') && this.down('#nb-average-velocity').getValue(),
+            averageStoryCount = this.down('#nb-average-story-count') && this.down('#nb-average-story-count').getValue(),
+
             comments = this.down('#tx-comment') && this.down('#tx-comment').getValue();
 
         this.logger.log('_addCost', team, cost, asOfDate, userName);
@@ -451,7 +489,7 @@ Ext.define("team-cost-admin", {
                 Project: team.get('_ref'),
                 Workspace: this.getContext().getWorkspace()._ref
             });
-            newPref.setCostForProject(cost, asOfDate, userName,comments,avgDayRate,noOfTeamMembers,teamType,sprintDays);
+            newPref.setCostForProject(cost, asOfDate, userName,comments,avgDayRate,noOfTeamMembers,teamType,sprintDays,averageVelocity,averageStoryCount);
             if (this._validate(grid.getStore(), newPref)){
                 newPref.save();
                 grid.getStore().add(newPref);
@@ -502,9 +540,11 @@ Ext.define("team-cost-admin", {
             }},
             {dataIndex: '__userDisplayName', text: 'User', flex: 2},
             {dataIndex: '__sprintDays', text: 'Sprint Days', flex: 2},
-            {dataIndex: '__avgDayRate', text: 'Average Day Rate', flex: 2},
+            {dataIndex: '__avgDayRate', text: 'Average <br>Day Rate', flex: 2},
             {dataIndex: '__noOfTeamMembers', text: '# Team Members', flex: 2},
             {dataIndex: '__teamType', text: 'Team Type', flex: 2},
+            {dataIndex: '__averageVelocity', text: 'Average <br>Velocity', flex: 2},
+            {dataIndex: '__averageStoryCount', text: 'Average <br>Story Count', flex: 2},
             {dataIndex: '__comments', text: 'Comments', flex: 2}];
     },
 
@@ -530,6 +570,22 @@ Ext.define("team-cost-admin", {
             }
         });
         return deferred.promise;
+    },
+
+    getSettingsFields: function() {
+        var check_box_margins = '5 0 5 0';
+        return [{
+            name: 'teamTypeField',
+            itemId:'teamTypeField',
+            xtype: 'rallyfieldcombobox',
+            fieldLabel: 'Team Type Field',
+            labelWidth: 125,
+            labelAlign: 'left',
+            minWidth: 200,
+            margin: '10 10 10 10',
+            model: 'Project',
+            allowBlank: false
+        }];
     },
 
     _showError: function(msg){

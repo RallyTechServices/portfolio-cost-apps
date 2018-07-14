@@ -82,6 +82,24 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                             return obj.sprintDays;
                         }
                     }
+                },{
+                    name: '__averageVelocity',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.averageVelocity;
+                        }
+                    }
+                },{
+                    name: '__averageStoryCount',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.averageStoryCount;
+                        }
+                    }
                 }];
 
                 var new_model = Ext.define(newModelName, {
@@ -89,7 +107,7 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                     logger: new Rally.technicalservices.Logger(),
                     fields: default_fields,
                     prefPrefix: prefPrefix,
-                    setCostForProject: function(cost, asOfDate, userName, comments, avgDayRate, noOfTeamMembers,teamType,sprintDays){
+                    setCostForProject: function(cost, asOfDate, userName, comments, avgDayRate, noOfTeamMembers,teamType,sprintDays,averageVelocity,averageStoryCount){
                         var isoDate = Rally.util.DateTime.toIsoString(asOfDate),
                             name = this.prefPrefix + isoDate;
 
@@ -103,7 +121,9 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                             avgDayRate: avgDayRate,
                             noOfTeamMembers: noOfTeamMembers,
                             teamType: teamType,
-                            sprintDays:sprintDays
+                            sprintDays:sprintDays,
+                            averageVelocity:averageVelocity,
+                            averageStoryCount:averageStoryCount
                         };
                         this.logger.log('setCostPerProject', name, obj, cost, asOfDate, userName, comments, avgDayRate, noOfTeamMembers,teamType,sprintDays);
 
