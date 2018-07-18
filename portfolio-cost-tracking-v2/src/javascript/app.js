@@ -186,8 +186,18 @@ Ext.define("portfolio-cost-tracking-v2", {
                     inlineFilterPanelConfig: {
                         collapsed: false,
                         quickFilterPanelConfig: {
-                            fieldNames: ['Owner', 'ScheduleState']
-                        }
+                            fieldNames: ['Owner', 'ScheduleState'],
+                            addQuickFilterConfig: {
+                                whiteListFields: ['Milestones', 'Tags']
+                            }
+                        },
+                        advancedFilterPanelConfig: {
+                            advancedFilterRowsConfig: {
+                                propertyFieldConfig: {
+                                    whiteListFields: ['Milestones', 'Tags']
+                                }
+                            }
+                        }                                          
                     }
                 }
         }];

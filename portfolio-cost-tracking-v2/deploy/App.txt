@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Mar 06 2017 13:55:49 GMT-0700 (MST) -->
+    <!--  Build Date: Mon Jul 16 2018 11:44:30 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Mar 06 2017 13:55:49 GMT-0700 (MST)";
-        var BUILDER = "kcorkan";
-        var CHECKSUM = 212672331138;
+        var APP_BUILD_DATE = "Mon Jul 16 2018 11:44:30 GMT-0700 (PDT)";
+        var BUILDER = "rajan08";
+        var CHECKSUM = 222137287144;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -587,6 +587,69 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                             return Rally.util.DateTime.fromIsoString(obj.asOfDate);
                         }
                     }
+                },{
+                    name: '__comments',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.comments;
+                        }
+                    }
+                },{
+                    name: '__avgDayRate',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.avgDayRate;
+                        }
+                    }
+                },{
+                    name: '__noOfTeamMembers',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.noOfTeamMembers;
+                        }
+                    }
+                },{
+                    name: '__teamType',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.teamType;
+                        }
+                    }
+                },{
+                    name: '__sprintDays',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.sprintDays;
+                        }
+                    }
+                },{
+                    name: '__averageVelocity',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.averageVelocity;
+                        }
+                    }
+                },{
+                    name: '__averageStoryCount',
+                    convert: function(v, record){
+                        var obj = record.get('Value');
+                        if (obj){
+                            obj = Ext.JSON.decode(obj);
+                            return obj.averageStoryCount;
+                        }
+                    }
                 }];
 
                 var new_model = Ext.define(newModelName, {
@@ -594,7 +657,7 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                     logger: new Rally.technicalservices.Logger(),
                     fields: default_fields,
                     prefPrefix: prefPrefix,
-                    setCostForProject: function(cost, asOfDate, userName){
+                    setCostForProject: function(cost, asOfDate, userName, comments, avgDayRate, noOfTeamMembers,teamType,sprintDays,averageVelocity,averageStoryCount){
                         var isoDate = Rally.util.DateTime.toIsoString(asOfDate),
                             name = this.prefPrefix + isoDate;
 
@@ -603,9 +666,16 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
                         var obj = {
                             cost: cost,
                             asOfDate: isoDate,
-                            userDisplayName: userName
+                            userDisplayName: userName,
+                            comments: comments,
+                            avgDayRate: avgDayRate,
+                            noOfTeamMembers: noOfTeamMembers,
+                            teamType: teamType,
+                            sprintDays:sprintDays,
+                            averageVelocity:averageVelocity,
+                            averageStoryCount:averageStoryCount
                         };
-                        this.logger.log('setCostPerProject', name, obj, cost, asOfDate, userName);
+                        this.logger.log('setCostPerProject', name, obj, cost, asOfDate, userName, comments, avgDayRate, noOfTeamMembers,teamType,sprintDays);
 
                         this.set('Value', Ext.JSON.encode(obj));
                     }
@@ -2234,8 +2304,18 @@ Ext.define("portfolio-cost-tracking-v2", {
                     inlineFilterPanelConfig: {
                         collapsed: false,
                         quickFilterPanelConfig: {
-                            fieldNames: ['Owner', 'ScheduleState']
-                        }
+                            fieldNames: ['Owner', 'ScheduleState'],
+                            addQuickFilterConfig: {
+                                whiteListFields: ['Milestones', 'Tags']
+                            }
+                        },
+                        advancedFilterPanelConfig: {
+                            advancedFilterRowsConfig: {
+                                propertyFieldConfig: {
+                                    whiteListFields: ['Milestones', 'Tags']
+                                }
+                            }
+                        }                                          
                     }
                 }
         }];
