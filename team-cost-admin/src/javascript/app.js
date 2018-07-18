@@ -20,7 +20,9 @@ Ext.define("team-cost-admin", {
 
     config: {
         defaultSettings: {
-            teamTypeField: 'c_TeamType'
+            teamTypeField: 'c_TeamType',
+            acceptedStoriesField: true,
+            currencySign: '$'
         }
     },    
                         
@@ -46,7 +48,7 @@ Ext.define("team-cost-admin", {
         if (this.down('rallygrid')){
             this.down('rallygrid').destroy();
         }
-        var currency = this.currency;
+        var currency = this.getSetting('currencySign');
         var groupHeaderTpl = Ext.create('Ext.XTemplate',
             '<div><b>{name}</b>   (' + currency + '{children:this.getCurrentCost})</div>',
             {
@@ -171,7 +173,7 @@ Ext.define("team-cost-admin", {
             },{
                 xtype: 'rallynumberfield',
                 itemId: 'nb-cost',
-                fieldLabel: 'Cost',
+                fieldLabel: 'SPOC',
                 margin: margin,
                 width: 175,
                 labelWidth: 100,
@@ -343,7 +345,14 @@ Ext.define("team-cost-admin", {
                 this.down('#nb-average-story-count').setValue(Ext.util.Format.round(records.length / timebox_limit, 2));
 
                 _.each(records,function(story){
-                    total_points += story.get('PlanEstimate') || 0;
+                    if(me.getSetting('acceptedStoriesField')){
+                        if(story.get('ScheduleState') == "Accepted"){
+                            total_points += story.get('PlanEstimate') || 0;
+                        }                        
+                    }else{
+                        total_points += story.get('PlanEstimate') || 0;
+                    }
+
                 });
                 this.down('#nb-average-velocity').setValue(Ext.util.Format.round(total_points / timebox_limit, 2));
 
@@ -401,7 +410,10 @@ Ext.define("team-cost-admin", {
             pageSize: timebox_limit,
             fetch: ['Name','StartDate','EndDate','WorkProducts','PlanEstimate'],
             filters: [{property:'EndDate', operator: '<=', value: Rally.util.DateTime.toIsoString(new Date)},{property:'Project',value:me.project.get('_ref')}],
-            sorters: [{property:'EndDate', direction:'DESC'}]
+            sorters: [{property:'EndDate', direction:'DESC'}],
+            context:{
+                project: null
+            }            
         };
 
         me.loadWsapiRecords(config).then({
@@ -423,19 +435,25 @@ Ext.define("team-cost-admin", {
                         story_filter.push({property:'Iteration.Name', value:iteration.get('Name') });
                     });
 
-                    story_filter = Rally.data.wsapi.Filter.or(story_filter).and( {property:'ScheduleState', value:'Accepted' });
+                    //story_filter = Rally.data.wsapi.Filter.or(story_filter).and( {property:'ScheduleState', value:'Accepted' });
+                    story_filter = Rally.data.wsapi.Filter.or(story_filter);
                     
                     console.log('story filter', story_filter.toString() );
-                    var story_config = {
+                    var store_config = {
                         model:  'HierarchicalRequirement',
-                        fetch: ['Name','PlanEstimate','Iteration'],
-                        filters: story_filter
+                        fetch: ['Name','PlanEstimate','Iteration','ScheduleState'],
+                        filters: story_filter,
+                        context:{
+                            projectScopeDown:false,
+                            project: me.project.get('_ref')
+                        }
                     };
-                    me.loadWsapiRecords(story_config).then({
+
+                    Deft.Promise.all([ me.loadWsapiRecords(store_config), me.loadWsapiRecords(Ext.Object.merge(store_config, {model: 'Defect'}))]).then({
                         success: function(records){
                             console.log('Stories',records);
 
-                            deferred.resolve(records);
+                            deferred.resolve(Ext.Array.flatten(records));
                         },
                         scope:me
                     });
@@ -517,7 +535,7 @@ Ext.define("team-cost-admin", {
 
     _getColumnCfgs: function(){
         var me = this,
-            currency = this.currency;
+            currency = this.getSetting('currencySign');
 
         return [{
             xtype: 'rallyrowactioncolumn',
@@ -574,6 +592,17 @@ Ext.define("team-cost-admin", {
 
     getSettingsFields: function() {
         var check_box_margins = '5 0 5 0';
+        var currency_store = Ext.create('Rally.data.custom.Store', {
+            data: [
+                {name: "US Dollars", value: "$"},
+                {name: "Euro", value: "&#128;"},
+                {name: "Pound", value: "&#163;"},
+                {name: "Japanese Yen", value: "&#165;"},
+                {name: "Brazilian Real", value: "R$"},
+                {name: "South African Rand", value: "R"}
+            ]
+        });
+
         return [{
             name: 'teamTypeField',
             itemId:'teamTypeField',
@@ -585,6 +614,25 @@ Ext.define("team-cost-admin", {
             margin: '10 10 10 10',
             model: 'Project',
             allowBlank: false
+        },{
+            name: 'acceptedStoriesField',
+            itemId:'acceptedStoriesField',
+            xtype: 'rallycheckboxfield',
+            fieldLabel: 'Use only Accepted Stories to calculate Average Velocity',
+            labelWidth: 125,
+            labelAlign: 'left',
+            minWidth: 200,
+            margin: '10 10 10 10'
+        },{
+            xtype: 'rallycombobox',
+            name: 'currencySign',
+            store: currency_store,
+            displayField: 'name',
+            valueField: 'value',
+            labelWidth: 125,
+            labelAlign: 'left',
+            minWidth: 200,
+            margin: '10 10 10 10'
         }];
     },
 

@@ -17,7 +17,9 @@ The grouped header shows the current team cost.
 
 The costs are saved to preference objects for the project.  
 
-Default currency is $ and is NOT pulled from the portfolio item cost tracking v2 app settings.  
+Default currency is $ and you may change it using App Settings. 
+
+![ScreenShot](/images/team-cost-app-settings.png)
 
 
 
