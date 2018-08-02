@@ -16,7 +16,7 @@
             this.portfolioItemType = config.portfolioItemType;
             this.projectCostDate = config.projectCostDate || new Date();
         },
-        addRollupRecords: function(portfolioItemRecordHash, stories){
+        addRollupRecords: function(portfolioItemRecordHash, defects){
             var portfolioItemTypes = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes();
 
             this.rootObjectIDs = [];
@@ -24,8 +24,9 @@
                 var portfolioRecords = portfolioItemRecordHash[portfolioItemTypes[i]] || [];
                 this._addPortfolioRecords(portfolioRecords);
             }
-
+            var stories = portfolioItemRecordHash['hierarchicalrequirement'];
             this._addStories(stories);
+            this._addDefects(defects);
             this._calculatePortfolioItemRollups();
         },
         getRollupData: function(record){
@@ -86,6 +87,25 @@
             }
 
         },
+
+        _addDefects: function(defects){
+            var parents = [],
+            //rollupItems = this.rollupItems,
+                totalFn = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCalculationTypeSettings().totalUnitsForStoryFn,
+                actualFn = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCalculationTypeSettings().actualUnitsForStoryFn;
+
+            for(var i =0; i < defects.length; i++){
+                var item = Ext.create('CArABU.technicalservices.DefectRollupItem', defects[i], totalFn, actualFn);
+
+                this.rollupItems[item.ObjectID] = item;
+
+                if (item.parent && this.rollupItems[item.parent]){
+                    parents.push(item.parent);
+                    this.rollupItems[item.parent].addChild(item);
+                }
+            }
+
+        },        
 
         _calculatePortfolioItemRollups: function(){
             for (var i=0; i<this.rootObjectIDs.length; i++){

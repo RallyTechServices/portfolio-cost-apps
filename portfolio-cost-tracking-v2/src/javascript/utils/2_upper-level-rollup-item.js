@@ -8,6 +8,8 @@ Ext.define('CArABU.technicalservices.UpperLevelPortfolioRollupItem',{
             var rollupDataTotal = 0,
                 rollupDataActual = 0,
                 rollupDataRemaining = 0,
+                rollupDataActualOpEx = 0,
+                rollupDataRemainingOpEx = 0,
                 totalUnitsSum = 0,
                 actualUnitsSum = 0,
                 rollupItems = this.children || [],
@@ -22,6 +24,8 @@ Ext.define('CArABU.technicalservices.UpperLevelPortfolioRollupItem',{
                 rollupDataTotal += item.getTotalCostRollup() ;
                 rollupDataActual +=  item.getActualCostRollup();
                 rollupDataRemaining += item.getRemainingCostRollup();
+                rollupDataActualOpEx +=  item.getActualCostRollupOpEx();
+                rollupDataRemainingOpEx += item.getRemainingCostRollupOpEx();   
                 totalUnitsSum += item.__totalUnits || 0;
                 actualUnitsSum += item.__actualUnits || 0;
                 notEstimated = notEstimated && item._notEstimated;
@@ -32,6 +36,8 @@ Ext.define('CArABU.technicalservices.UpperLevelPortfolioRollupItem',{
             this._rollupDataTotalCost = rollupDataTotal;
             this._rollupDataActualCost = rollupDataActual;
             this._rollupDataRemainingCost = rollupDataRemaining;
+            this._rollupDataActualOpExCost = rollupDataActualOpEx;
+            this._rollupDataRemainingOpExCost = rollupDataRemainingOpEx;
             this.__totalUnits = totalUnitsSum;
             this.__actualUnits = actualUnitsSum;
             this._rollupDataToolTip = this.getTooltip();

@@ -3,10 +3,14 @@
 
     Ext.define('CArABU.technicalservices.RollupItem',{
 
+    _rollupDataActualOpExCost: undefined,
+    _rollupDataRemainingOpExCost: undefined,
+
     _rollupDataPreliminaryBudget: undefined,
     _rollupDataTotalCost: undefined,
     _rollupDataActualCost: undefined,
-    _rollupDataRemainingCost: undefined,
+    _rollupDataRemainingCost: undefined,    
+    
     _rollupDataToolTip: null,
     _notEstimated: true,
     children: undefined,
@@ -104,21 +108,31 @@
     getTotalCostRollup: function(){
         //With this new version, this should always be Actual + Remaining
         //if (this._notEstimated){
-            return this.getActualCostRollup() + this.getRemainingCostRollup();
+            return this.getActualCostRollup() + this.getRemainingCostRollup() + this.getActualCostRollupOpEx() + this.getRemainingCostRollupOpEx();
         //}
         //return this._rollupDataTotalCost;
     },
     getActualCostRollup: function(){
-        return this._rollupDataActualCost;
+        return this._rollupDataActualCost || 0;
     },
     getRemainingCostRollup: function(){
         if (this._notEstimated){
             return Math.max(this.getPreliminaryBudget() || 0 - this.getActualCostRollup(), 0);
         }
-        return this._rollupDataRemainingCost;
+        return this._rollupDataRemainingCost || 0;
     },
+    getActualCostRollupOpEx: function(){
+        return this._rollupDataActualOpExCost || 0;
+    },
+    getRemainingCostRollupOpEx: function(){
+        if (this._notEstimated){
+            return Math.max(this.getPreliminaryBudget() || 0 - this.getActualCostRollupOpEx(), 0);
+        }
+        return this._rollupDataRemainingOpExCost || 0;
+    },
+
     getPreliminaryBudget: function(){
-        return this._rollupDataPreliminaryBudget;
+        return this._rollupDataPreliminaryBudget || 0;
     }
 });
 })();

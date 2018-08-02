@@ -375,8 +375,8 @@ Ext.define("portfolio-cost-tracking-v2", {
             portfolioItemTypes: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes(),
             featureName: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName(),
             listeners: {
-                rollupdataloaded: function(portfolioHash, stories){
-                    this._processRollupData(portfolioHash,stories,records);
+                rollupdataloaded: function(portfolioHash, defects){
+                    this._processRollupData(portfolioHash,defects,records);
                 },
                 loaderror: this._handleLoadError,
                 statusupdate: this._showStatus,
@@ -388,11 +388,11 @@ Ext.define("portfolio-cost-tracking-v2", {
     _handleLoadError: function(msg){
         Rally.ui.notify.Notifier.showError({message: msg});
     },
-    _processRollupData: function(portfolioHash, stories, records){
+    _processRollupData: function(portfolioHash, defects, records){
         this.logger.log('_processRollupData');
         var me = this;
         portfolioHash[records[0].get('_type').toLowerCase()] = records;
-        this.rollupData.addRollupRecords(portfolioHash, stories);
+        this.rollupData.addRollupRecords(portfolioHash, defects);
         this.rollupData.updateModels(records);
         me._showStatus(null);
     },
@@ -461,7 +461,7 @@ Ext.define("portfolio-cost-tracking-v2", {
     getDerivedColumns: function(){
 
         return [{
-            text: "Actual Cost To Date",
+            text: "Actual CapEx Cost To Date",
             xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             costField: '_rollupDataActualCost',
@@ -469,14 +469,30 @@ Ext.define("portfolio-cost-tracking-v2", {
             flex: 1,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataActualCost')
         },{
-            text: "Remaining Cost",
+            text: "Remaining CapEx Cost",
             xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataRemainingCost',
             flex: 1,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataRemainingCost')
-        }, {
+        },{
+            text: "Actual OpEx Cost To Date",
+            xtype: 'costtemplatecolumn',
+            dataIndex: '_rollupData',
+            costField: '_rollupDataActualOpExCost',
+            sortable: false,
+            flex: 1,
+            tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataActualCost')
+        },{
+            text: "Remaining OpEx Cost",
+            xtype: 'costtemplatecolumn',
+            dataIndex: '_rollupData',
+            sortable: false,
+            costField: '_rollupDataRemainingOpExCost',
+            flex: 1,
+            tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataRemainingCost')
+        },{
             text: 'Total Projected',
             xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',

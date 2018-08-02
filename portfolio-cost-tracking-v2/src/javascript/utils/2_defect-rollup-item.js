@@ -1,4 +1,4 @@
-Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
+Ext.define('CArABU.technicalservices.DefectRollupItem', {
     extend: 'CArABU.technicalservices.RollupItem',
     constructor: function(record, totalFn, actualFn) {
 
@@ -17,23 +17,21 @@ Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
             if (data.AcceptedDate){
                 acceptedCostPerUnit = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref, data.AcceptedDate);
             }
-
             var featureName = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName();
 
-            if(data[featureName][CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField] == CArABU.technicalservices.PortfolioItemCostTrackingSettings.opExTypeValue ){
+            if(data.Requirement[featureName][CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField] == CArABU.technicalservices.PortfolioItemCostTrackingSettings.opExTypeValue ){
                 this._rollupDataActualOpExCost = (this.__actualUnits * acceptedCostPerUnit) || 0;
                 this._rollupDataRemainingOpExCost = Math.max((this.__totalUnits - this.__actualUnits),0) * costPerUnit;
                 this._rollupDataTotalCost = this._rollupDataActualOpExCost + this._rollupDataRemainingOpExCost;  
             }else{
                 this._rollupDataActualCost = (this.__actualUnits * acceptedCostPerUnit) || 0;
                 this._rollupDataRemainingCost = Math.max((this.__totalUnits - this.__actualUnits),0) * costPerUnit;
-                this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;                            
+                this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;
             }
-
             //this._rollupDataRemainingCost = this._rollupDataTotalCost - this._rollupDataActualCost;
             //this._rollupDataTotalCost = (this.__totalUnits * costPerUnit) || 0;
 
-            this.parent = record.get('PortfolioItem') && record.get('PortfolioItem').ObjectID || record.get('Parent') && record.get('Parent').ObjectID || null;
+            this.parent = record.get('Requirement') && record.get('Requirement').ObjectID || null;
 
             this.objectID = data.ObjectID;
 
@@ -47,15 +45,11 @@ Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
     addChild: function(child){
         if (!this.children){
             this.children = [];
-            this._rollupDataActualOpExCost = 0,
-            this._rollupDataRemainingOpExCost = 0,
             this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
             this._rollupDataActualCost = 0;
             this._rollupDataRemainingCost = 0;
             this.__totalUnits = 0;
             this.__actualUnits = 0;
-
-
         }
         this.children.push(child);
 
@@ -63,12 +57,10 @@ Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
         this.__actualUnits += child.__actualUnits || 0;
 
         this._notEstimated = (this.__totalUnits === 0);
-        this._rollupDataActualOpExCost += child._rollupDataActualOpExCost;
-        this._rollupDataRemainingOpExCost += child._rollupDataRemainingOpExCost;
-        this._rollupDataActualCost += child._rollupDataActualCost;
-        this._rollupDataRemainingCost += child._rollupDataRemainingCost;
-        this._rollupDataTotalCost += child._rollupDataTotalCost;
 
+        this._rollupDataActualCost += child._rollupDataActualCost;
+        this._rollupDataTotalCost += child._rollupDataTotalCost;
+        this._rollupDataRemainingCost += child._rollupDataRemainingCost;
         this._buildToolTip();
     },
     _buildToolTip: function(){
