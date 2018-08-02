@@ -7,6 +7,7 @@
     Ext.define('CArABU.technicalservices.RollupDataLoader',{
 
         storyModelName: 'hierarchicalrequirement',
+        defectModelName: 'defect',
 
         mixins: {
             observable: 'Ext.util.Observable'
@@ -56,6 +57,7 @@
                 fns.push(this.fetchPortfolioItems);
             }
             fns.push(this.fetchUserStories);
+            fns.push(this.fetchDefects);
             this.recordsHash = {};
 
             Deft.Chain.pipeline(fns, this).then({
@@ -123,6 +125,7 @@
             });
             return chunks;
         },
+
         fetchUserStories: function(parentRecords){
             parentRecords = parentRecords || this.rootRecords;
             if (!parentRecords || parentRecords.length === 0){
@@ -140,6 +143,25 @@
 
             return this.fetchChunks(type, fetch, chunks, featureParentName, Ext.String.format("Please Wait... Loading User Stories for {0} Portfolio Items", parentRecords.length));
         },
+
+        fetchDefects: function(parentRecords){
+            parentRecords = parentRecords || this.rootRecords;
+            if (!parentRecords || parentRecords.length === 0){
+                return this.fetchRoot();
+            }
+            parentRecords = _.flatten(parentRecords);
+
+            var parentType = parentRecords[0].get('_type');
+            this.recordsHash[parentType] = parentRecords;
+
+            var type = this.defectModelName,
+                fetch = this.storyFetch.concat(this.getRequiredFetchFields(type)),
+                chunks = this._getChunks(parentRecords, 'Defects','Count'),
+                requirementID = "Requirement.ObjectID";
+
+            return this.fetchChunks(type, fetch, chunks, requirementID, Ext.String.format("Please Wait... Loading Defects for {0} Portfolio Items", parentRecords.length));
+        },
+
         fetchChunks: function(type, fetch, chunks, chunkProperty, statusString){
 
             if (chunks && chunks.length > 0 && chunks[0].length===0){
@@ -181,13 +203,20 @@
             });
             return deferred;
         },
-        getRequiredFetchFields: function(type){
 
+        getRequiredFetchFields: function(type){
+            var featureName = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName();
             if (type.toLowerCase() === this.storyModelName){
-                return ['Parent','PortfolioItem','ObjectID'];
+                return ['Parent','PortfolioItem','ObjectID','Defects', featureName , CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField];
             }
-            return  ['Children', 'UserStories','Parent','ObjectID'];
+
+            if (type.toLowerCase() === this.defectModelName){
+                return ['Parent','PortfolioItem','ObjectID','Requirement',featureName , CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField];
+            }
+
+            return  ['Children', 'UserStories','Parent','ObjectID',featureName , CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField];
         },
+
         throttle: function (fns, maxParallelCalls, scope) {
 
             if (maxParallelCalls <= 0 || fns.length < maxParallelCalls){

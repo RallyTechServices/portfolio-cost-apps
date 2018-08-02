@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Cost Tracking (v2)</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Jul 16 2018 11:44:30 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 02 2018 16:22:43 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Jul 16 2018 11:44:30 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Thu Aug 02 2018 16:22:43 GMT-0700 (PDT)";
         var BUILDER = "rajan08";
-        var CHECKSUM = 222137287144;
+        var CHECKSUM = 272589648695;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -691,10 +691,14 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
 
     Ext.define('CArABU.technicalservices.RollupItem',{
 
+    _rollupDataActualOpExCost: undefined,
+    _rollupDataRemainingOpExCost: undefined,
+
     _rollupDataPreliminaryBudget: undefined,
     _rollupDataTotalCost: undefined,
     _rollupDataActualCost: undefined,
-    _rollupDataRemainingCost: undefined,
+    _rollupDataRemainingCost: undefined,    
+    
     _rollupDataToolTip: null,
     _notEstimated: true,
     children: undefined,
@@ -792,109 +796,35 @@ Ext.define('CArABU.technicalservices.ProjectCostModelBuilder',{
     getTotalCostRollup: function(){
         //With this new version, this should always be Actual + Remaining
         //if (this._notEstimated){
-            return this.getActualCostRollup() + this.getRemainingCostRollup();
+            return this.getActualCostRollup() + this.getRemainingCostRollup() + this.getActualCostRollupOpEx() + this.getRemainingCostRollupOpEx();
         //}
         //return this._rollupDataTotalCost;
     },
     getActualCostRollup: function(){
-        return this._rollupDataActualCost;
+        return this._rollupDataActualCost || 0;
     },
     getRemainingCostRollup: function(){
         if (this._notEstimated){
             return Math.max(this.getPreliminaryBudget() || 0 - this.getActualCostRollup(), 0);
         }
-        return this._rollupDataRemainingCost;
+        return this._rollupDataRemainingCost || 0;
     },
+    getActualCostRollupOpEx: function(){
+        return this._rollupDataActualOpExCost || 0;
+    },
+    getRemainingCostRollupOpEx: function(){
+        if (this._notEstimated){
+            return Math.max(this.getPreliminaryBudget() || 0 - this.getActualCostRollupOpEx(), 0);
+        }
+        return this._rollupDataRemainingOpExCost || 0;
+    },
+
     getPreliminaryBudget: function(){
-        return this._rollupDataPreliminaryBudget;
+        return this._rollupDataPreliminaryBudget || 0;
     }
 });
 })();
-Ext.define('CArABU.technicalservices.LowestLevelPortfolioRollupItem',{
-    extend: 'CArABU.technicalservices.RollupItem',
-
-    processChildren: function(){
-
-        this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
-        this._rollupDataActualCost = 0;
-        this._rollupDataRemainingCost = 0;
-        this.__totalUnits = 0;
-        this.__actualUnits = 0;
-        var notEstimated = (!this.children || this.children.length === 0) ;
-
-        Ext.Array.each(this.children, function(child){
-            this.__totalUnits += child.__totalUnits || 0;
-            this.__actualUnits += child.__actualUnits || 0;
-            this._rollupDataActualCost += child._rollupDataActualCost;
-            this._rollupDataRemainingCost += child._rollupDataRemainingCost;
-            notEstimated = notEstimated && child._notEstimated;
-        }, this);
-        this._notEstimated = notEstimated;
-
-        this._rollupDataToolTip = this.getTooltip();
-
-        if (this._notEstimated && this.getPreliminaryBudget() > this.getActualCostRollup()){
-            this._rollupDataRemainingCost = this.getPreliminaryBudget() - this.getActualCostRollup();
-        }
-        //This should always be actual + remaining...
-        this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;
-    },
-    addChild: function(child){
-        if (!this.children){
-            this.children = [];
-            this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
-            this._rollupDataActualCost = 0;
-            this._rollupDataRemainingCost = 0;
-            this.__totalUnits = 0;
-            this.__actualUnits = 0;
-
-        }
-        this.children.push(child);
-
-    }
-});
-Ext.define('CArABU.technicalservices.UpperLevelPortfolioRollupItem',{
-    extend: 'CArABU.technicalservices.RollupItem',
-
-
-    processChildren: function(){
-
-        if (this.children && this.children.length > 0){
-            var rollupDataTotal = 0,
-                rollupDataActual = 0,
-                rollupDataRemaining = 0,
-                totalUnitsSum = 0,
-                actualUnitsSum = 0,
-                rollupItems = this.children || [],
-                notEstimated = true,
-                preliminaryBudget = 0;
-
-
-            for (var i=0; i<rollupItems.length; i++){
-                var item = rollupItems[i];
-                item.processChildren();
-                preliminaryBudget += item._rollupDataPreliminaryBudget;
-                rollupDataTotal += item.getTotalCostRollup() ;
-                rollupDataActual +=  item.getActualCostRollup();
-                rollupDataRemaining += item.getRemainingCostRollup();
-                totalUnitsSum += item.__totalUnits || 0;
-                actualUnitsSum += item.__actualUnits || 0;
-                notEstimated = notEstimated && item._notEstimated;
-            }
-
-            this._rollupDataPreliminaryBudget = preliminaryBudget;
-            this._notEstimated = notEstimated;
-            this._rollupDataTotalCost = rollupDataTotal;
-            this._rollupDataActualCost = rollupDataActual;
-            this._rollupDataRemainingCost = rollupDataRemaining;
-            this.__totalUnits = totalUnitsSum;
-            this.__actualUnits = actualUnitsSum;
-            this._rollupDataToolTip = this.getTooltip();
-        }
-    }
-});
-
-Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
+Ext.define('CArABU.technicalservices.DefectRollupItem', {
     extend: 'CArABU.technicalservices.RollupItem',
     constructor: function(record, totalFn, actualFn) {
 
@@ -913,14 +843,21 @@ Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
             if (data.AcceptedDate){
                 acceptedCostPerUnit = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref, data.AcceptedDate);
             }
+            var featureName = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName();
 
-            this._rollupDataActualCost = (this.__actualUnits * acceptedCostPerUnit) || 0;
-            this._rollupDataRemainingCost = Math.max((this.__totalUnits - this.__actualUnits),0) * costPerUnit;
-            this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;
+            if(data.Requirement[featureName][CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField] == CArABU.technicalservices.PortfolioItemCostTrackingSettings.opExTypeValue ){
+                this._rollupDataActualOpExCost = (this.__actualUnits * acceptedCostPerUnit) || 0;
+                this._rollupDataRemainingOpExCost = Math.max((this.__totalUnits - this.__actualUnits),0) * costPerUnit;
+                this._rollupDataTotalCost = this._rollupDataActualOpExCost + this._rollupDataRemainingOpExCost;  
+            }else{
+                this._rollupDataActualCost = (this.__actualUnits * acceptedCostPerUnit) || 0;
+                this._rollupDataRemainingCost = Math.max((this.__totalUnits - this.__actualUnits),0) * costPerUnit;
+                this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;
+            }
             //this._rollupDataRemainingCost = this._rollupDataTotalCost - this._rollupDataActualCost;
             //this._rollupDataTotalCost = (this.__totalUnits * costPerUnit) || 0;
 
-            this.parent = record.get('PortfolioItem') && record.get('PortfolioItem').ObjectID || record.get('Parent') && record.get('Parent').ObjectID || null;
+            this.parent = record.get('Requirement') && record.get('Requirement').ObjectID || null;
 
             this.objectID = data.ObjectID;
 
@@ -950,6 +887,189 @@ Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
         this._rollupDataActualCost += child._rollupDataActualCost;
         this._rollupDataTotalCost += child._rollupDataTotalCost;
         this._rollupDataRemainingCost += child._rollupDataRemainingCost;
+        this._buildToolTip();
+    },
+    _buildToolTip: function(){
+        if (this.__totalUnits > 0){
+            var acceptedDate = "Accepted Date";
+            if (this.AcceptedDate){
+                acceptedDate = Rally.util.DateTime.format(this.AcceptedDate,'Y-m-d');
+            }
+            this._rollupDataToolTip = Ext.String.format('<b>Actual (Accepted) Units:</b> {0}<br/>' +
+                                                        '<b>Total Units: </b> {2}<br/><br/>' +
+                                                        '<b>Actual Cost</b><br/>{0} Accepted * Team Cost on {1}<br/><br/>' +
+                                                        '<b>Remaining Cost</b><br/>({2} Total - {0} Accepted) * Current Team Cost<br/><br/>' +
+                                                        '<b>Total Projected</b><br/>Actual Cost + Remaining Cost', this.__actualUnits, acceptedDate, this.__totalUnits);
+        }
+    }
+});
+Ext.define('CArABU.technicalservices.LowestLevelPortfolioRollupItem',{
+    extend: 'CArABU.technicalservices.RollupItem',
+
+    processChildren: function(){
+
+        this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
+        this._rollupDataActualCost = 0;
+        this._rollupDataRemainingCost = 0;
+        this._rollupDataActualOpExCost = 0;
+        this._rollupDataRemainingOpExCost = 0;
+        this.__totalUnits = 0;
+        this.__actualUnits = 0;
+        var notEstimated = (!this.children || this.children.length === 0) ;
+
+        Ext.Array.each(this.children, function(child){
+            this.__totalUnits += child.__totalUnits || 0;
+            this.__actualUnits += child.__actualUnits || 0;
+            this._rollupDataActualCost += child._rollupDataActualCost;
+            this._rollupDataRemainingCost += child._rollupDataRemainingCost;
+            this._rollupDataActualOpExCost += child._rollupDataActualOpExCost;
+            this._rollupDataRemainingOpExCost += child._rollupDataRemainingOpExCost;
+            notEstimated = notEstimated && child._notEstimated;
+        }, this);
+        this._notEstimated = notEstimated;
+
+        this._rollupDataToolTip = this.getTooltip();
+
+        if (this._notEstimated && this.getPreliminaryBudget() > this.getActualCostRollup()){
+            this._rollupDataRemainingCost = this.getPreliminaryBudget() - this.getActualCostRollup();
+        }
+        //This should always be actual + remaining...
+        this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataActualOpExCost +  this._rollupDataRemainingCost + this._rollupDataRemainingOpExCost;
+    },
+    addChild: function(child){
+        if (!this.children){
+            this.children = [];
+            this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
+            this._rollupDataActualCost = 0;
+            this._rollupDataRemainingCost = 0;
+            this._rollupDataActualOpExCost = 0;
+            this._rollupDataRemainingOpExCost = 0;
+            this.__totalUnits = 0;
+            this.__actualUnits = 0;
+
+        }
+        this.children.push(child);
+
+    }
+});
+Ext.define('CArABU.technicalservices.UpperLevelPortfolioRollupItem',{
+    extend: 'CArABU.technicalservices.RollupItem',
+
+
+    processChildren: function(){
+
+        if (this.children && this.children.length > 0){
+            var rollupDataTotal = 0,
+                rollupDataActual = 0,
+                rollupDataRemaining = 0,
+                rollupDataActualOpEx = 0,
+                rollupDataRemainingOpEx = 0,
+                totalUnitsSum = 0,
+                actualUnitsSum = 0,
+                rollupItems = this.children || [],
+                notEstimated = true,
+                preliminaryBudget = 0;
+
+
+            for (var i=0; i<rollupItems.length; i++){
+                var item = rollupItems[i];
+                item.processChildren();
+                preliminaryBudget += item._rollupDataPreliminaryBudget;
+                rollupDataTotal += item.getTotalCostRollup() ;
+                rollupDataActual +=  item.getActualCostRollup();
+                rollupDataRemaining += item.getRemainingCostRollup();
+                rollupDataActualOpEx +=  item.getActualCostRollupOpEx();
+                rollupDataRemainingOpEx += item.getRemainingCostRollupOpEx();   
+                totalUnitsSum += item.__totalUnits || 0;
+                actualUnitsSum += item.__actualUnits || 0;
+                notEstimated = notEstimated && item._notEstimated;
+            }
+
+            this._rollupDataPreliminaryBudget = preliminaryBudget;
+            this._notEstimated = notEstimated;
+            this._rollupDataTotalCost = rollupDataTotal;
+            this._rollupDataActualCost = rollupDataActual;
+            this._rollupDataRemainingCost = rollupDataRemaining;
+            this._rollupDataActualOpExCost = rollupDataActualOpEx;
+            this._rollupDataRemainingOpExCost = rollupDataRemainingOpEx;
+            this.__totalUnits = totalUnitsSum;
+            this.__actualUnits = actualUnitsSum;
+            this._rollupDataToolTip = this.getTooltip();
+        }
+    }
+});
+
+Ext.define('CArABU.technicalservices.UserStoryRollupItem', {
+    extend: 'CArABU.technicalservices.RollupItem',
+    constructor: function(record, totalFn, actualFn) {
+
+        var data = record.data;
+        if (record.getData && record.getData()){
+            data = record.getData();
+        }
+
+        if (data){
+            this.__totalUnits = totalFn(data);
+            this.__actualUnits = actualFn(data);
+            this._notEstimated = false;
+            var costPerUnit =CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref),
+                acceptedCostPerUnit = costPerUnit;
+
+            if (data.AcceptedDate){
+                acceptedCostPerUnit = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCostPerUnit(data.Project._ref, data.AcceptedDate);
+            }
+
+            var featureName = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName();
+
+            if(data[featureName][CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField] == CArABU.technicalservices.PortfolioItemCostTrackingSettings.opExTypeValue ){
+                this._rollupDataActualOpExCost = (this.__actualUnits * acceptedCostPerUnit) || 0;
+                this._rollupDataRemainingOpExCost = Math.max((this.__totalUnits - this.__actualUnits),0) * costPerUnit;
+                this._rollupDataTotalCost = this._rollupDataActualOpExCost + this._rollupDataRemainingOpExCost;  
+            }else{
+                this._rollupDataActualCost = (this.__actualUnits * acceptedCostPerUnit) || 0;
+                this._rollupDataRemainingCost = Math.max((this.__totalUnits - this.__actualUnits),0) * costPerUnit;
+                this._rollupDataTotalCost = this._rollupDataActualCost + this._rollupDataRemainingCost;                            
+            }
+
+            //this._rollupDataRemainingCost = this._rollupDataTotalCost - this._rollupDataActualCost;
+            //this._rollupDataTotalCost = (this.__totalUnits * costPerUnit) || 0;
+
+            this.parent = record.get('PortfolioItem') && record.get('PortfolioItem').ObjectID || record.get('Parent') && record.get('Parent').ObjectID || null;
+
+            this.objectID = data.ObjectID;
+
+            this._rollupDataPreliminaryBudget = null;
+            this._rollupDataToolTip = null;
+
+            Ext.apply(this, data);
+            this._buildToolTip();
+        }
+    },
+    addChild: function(child){
+        if (!this.children){
+            this.children = [];
+            this._rollupDataActualOpExCost = 0,
+            this._rollupDataRemainingOpExCost = 0,
+            this._rollupDataTotalCost = 0; //Need to clear this out becuase this is preliminary budget if there are no children
+            this._rollupDataActualCost = 0;
+            this._rollupDataRemainingCost = 0;
+            this.__totalUnits = 0;
+            this.__actualUnits = 0;
+
+
+        }
+        this.children.push(child);
+
+        this.__totalUnits += child.__totalUnits || 0;
+        this.__actualUnits += child.__actualUnits || 0;
+
+        this._notEstimated = (this.__totalUnits === 0);
+        this._rollupDataActualOpExCost += child._rollupDataActualOpExCost;
+        this._rollupDataRemainingOpExCost += child._rollupDataRemainingOpExCost;
+        this._rollupDataActualCost += child._rollupDataActualCost;
+        this._rollupDataRemainingCost += child._rollupDataRemainingCost;
+        this._rollupDataTotalCost += child._rollupDataTotalCost;
+
         this._buildToolTip();
     },
     _buildToolTip: function(){
@@ -1205,7 +1325,7 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
             this.portfolioItemType = config.portfolioItemType;
             this.projectCostDate = config.projectCostDate || new Date();
         },
-        addRollupRecords: function(portfolioItemRecordHash, stories){
+        addRollupRecords: function(portfolioItemRecordHash, defects){
             var portfolioItemTypes = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes();
 
             this.rootObjectIDs = [];
@@ -1213,8 +1333,9 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
                 var portfolioRecords = portfolioItemRecordHash[portfolioItemTypes[i]] || [];
                 this._addPortfolioRecords(portfolioRecords);
             }
-
+            var stories = portfolioItemRecordHash['hierarchicalrequirement'];
             this._addStories(stories);
+            this._addDefects(defects);
             this._calculatePortfolioItemRollups();
         },
         getRollupData: function(record){
@@ -1276,6 +1397,25 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
 
         },
 
+        _addDefects: function(defects){
+            var parents = [],
+            //rollupItems = this.rollupItems,
+                totalFn = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCalculationTypeSettings().totalUnitsForStoryFn,
+                actualFn = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getCalculationTypeSettings().actualUnitsForStoryFn;
+
+            for(var i =0; i < defects.length; i++){
+                var item = Ext.create('CArABU.technicalservices.DefectRollupItem', defects[i], totalFn, actualFn);
+
+                this.rollupItems[item.ObjectID] = item;
+
+                if (item.parent && this.rollupItems[item.parent]){
+                    parents.push(item.parent);
+                    this.rollupItems[item.parent].addChild(item);
+                }
+            }
+
+        },        
+
         _calculatePortfolioItemRollups: function(){
             for (var i=0; i<this.rootObjectIDs.length; i++){
                 var item = this.rollupItems[this.rootObjectIDs[i]];
@@ -1315,6 +1455,7 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
     Ext.define('CArABU.technicalservices.RollupDataLoader',{
 
         storyModelName: 'hierarchicalrequirement',
+        defectModelName: 'defect',
 
         mixins: {
             observable: 'Ext.util.Observable'
@@ -1364,6 +1505,7 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
                 fns.push(this.fetchPortfolioItems);
             }
             fns.push(this.fetchUserStories);
+            fns.push(this.fetchDefects);
             this.recordsHash = {};
 
             Deft.Chain.pipeline(fns, this).then({
@@ -1431,6 +1573,7 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
             });
             return chunks;
         },
+
         fetchUserStories: function(parentRecords){
             parentRecords = parentRecords || this.rootRecords;
             if (!parentRecords || parentRecords.length === 0){
@@ -1448,6 +1591,25 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
 
             return this.fetchChunks(type, fetch, chunks, featureParentName, Ext.String.format("Please Wait... Loading User Stories for {0} Portfolio Items", parentRecords.length));
         },
+
+        fetchDefects: function(parentRecords){
+            parentRecords = parentRecords || this.rootRecords;
+            if (!parentRecords || parentRecords.length === 0){
+                return this.fetchRoot();
+            }
+            parentRecords = _.flatten(parentRecords);
+
+            var parentType = parentRecords[0].get('_type');
+            this.recordsHash[parentType] = parentRecords;
+
+            var type = this.defectModelName,
+                fetch = this.storyFetch.concat(this.getRequiredFetchFields(type)),
+                chunks = this._getChunks(parentRecords, 'Defects','Count'),
+                requirementID = "Requirement.ObjectID";
+
+            return this.fetchChunks(type, fetch, chunks, requirementID, Ext.String.format("Please Wait... Loading Defects for {0} Portfolio Items", parentRecords.length));
+        },
+
         fetchChunks: function(type, fetch, chunks, chunkProperty, statusString){
 
             if (chunks && chunks.length > 0 && chunks[0].length===0){
@@ -1489,13 +1651,20 @@ Ext.define('CArABU.technicalservices.promise.ParallelThrottle',{
             });
             return deferred;
         },
-        getRequiredFetchFields: function(type){
 
+        getRequiredFetchFields: function(type){
+            var featureName = CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName();
             if (type.toLowerCase() === this.storyModelName){
-                return ['Parent','PortfolioItem','ObjectID'];
+                return ['Parent','PortfolioItem','ObjectID','Defects', featureName , CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField];
             }
-            return  ['Children', 'UserStories','Parent','ObjectID'];
+
+            if (type.toLowerCase() === this.defectModelName){
+                return ['Parent','PortfolioItem','ObjectID','Requirement',featureName , CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField];
+            }
+
+            return  ['Children', 'UserStories','Parent','ObjectID',featureName , CArABU.technicalservices.PortfolioItemCostTrackingSettings.expenseTypeField];
         },
+
         throttle: function (fns, maxParallelCalls, scope) {
 
             if (maxParallelCalls <= 0 || fns.length < maxParallelCalls){
@@ -1623,8 +1792,10 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
 
     normalizedCostPerUnit: 1,
 
-
+    opExTypeValue : 'OpEx',
     preliminaryBudgetField: 'PreliminaryEstimate',
+
+    expenseTypeField: 'c_ExpenseType',
     /**
      * App configurations
      */
@@ -1917,7 +2088,17 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             });
         });
 
+        var featureName = this.portfolioItemTypes[0].typePath;
+        
         return [{
+            xtype: 'rallyfieldcombobox',
+            name: 'expenseTypeField',
+            value: config.expenseTypeField,
+            fieldLabel: 'Choose Expense Type field',
+            model: featureName,
+            labelWidth: labelWidth,
+            margin: '10 0 10 0'
+        },{
             xtype: 'rallycombobox',
             name: 'currencySign',
             store: currency_store,
@@ -2493,8 +2674,8 @@ Ext.define("portfolio-cost-tracking-v2", {
             portfolioItemTypes: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getPortfolioItemTypes(),
             featureName: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getFeatureName(),
             listeners: {
-                rollupdataloaded: function(portfolioHash, stories){
-                    this._processRollupData(portfolioHash,stories,records);
+                rollupdataloaded: function(portfolioHash, defects){
+                    this._processRollupData(portfolioHash,defects,records);
                 },
                 loaderror: this._handleLoadError,
                 statusupdate: this._showStatus,
@@ -2506,11 +2687,11 @@ Ext.define("portfolio-cost-tracking-v2", {
     _handleLoadError: function(msg){
         Rally.ui.notify.Notifier.showError({message: msg});
     },
-    _processRollupData: function(portfolioHash, stories, records){
+    _processRollupData: function(portfolioHash, defects, records){
         this.logger.log('_processRollupData');
         var me = this;
         portfolioHash[records[0].get('_type').toLowerCase()] = records;
-        this.rollupData.addRollupRecords(portfolioHash, stories);
+        this.rollupData.addRollupRecords(portfolioHash, defects);
         this.rollupData.updateModels(records);
         me._showStatus(null);
     },
@@ -2579,7 +2760,7 @@ Ext.define("portfolio-cost-tracking-v2", {
     getDerivedColumns: function(){
 
         return [{
-            text: "Actual Cost To Date",
+            text: "Actual CapEx Cost To Date",
             xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             costField: '_rollupDataActualCost',
@@ -2587,14 +2768,30 @@ Ext.define("portfolio-cost-tracking-v2", {
             flex: 1,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataActualCost')
         },{
-            text: "Remaining Cost",
+            text: "Remaining CapEx Cost",
             xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',
             sortable: false,
             costField: '_rollupDataRemainingCost',
             flex: 1,
             tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataRemainingCost')
-        }, {
+        },{
+            text: "Actual OpEx Cost To Date",
+            xtype: 'costtemplatecolumn',
+            dataIndex: '_rollupData',
+            costField: '_rollupDataActualOpExCost',
+            sortable: false,
+            flex: 1,
+            tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataActualCost')
+        },{
+            text: "Remaining OpEx Cost",
+            xtype: 'costtemplatecolumn',
+            dataIndex: '_rollupData',
+            sortable: false,
+            costField: '_rollupDataRemainingOpExCost',
+            flex: 1,
+            tooltip: CArABU.technicalservices.PortfolioItemCostTrackingSettings.getHeaderTooltip('_rollupDataRemainingCost')
+        },{
             text: 'Total Projected',
             xtype: 'costtemplatecolumn',
             dataIndex: '_rollupData',

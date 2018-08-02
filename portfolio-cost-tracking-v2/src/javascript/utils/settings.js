@@ -14,8 +14,10 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
 
     normalizedCostPerUnit: 1,
 
-
+    opExTypeValue : 'OpEx',
     preliminaryBudgetField: 'PreliminaryEstimate',
+
+    expenseTypeField: 'c_ExpenseType',
     /**
      * App configurations
      */
@@ -308,7 +310,17 @@ Ext.define('CArABU.technicalservices.PortfolioItemCostTrackingSettings', {
             });
         });
 
+        var featureName = this.portfolioItemTypes[0].typePath;
+        
         return [{
+            xtype: 'rallyfieldcombobox',
+            name: 'expenseTypeField',
+            value: config.expenseTypeField,
+            fieldLabel: 'Choose Expense Type field',
+            model: featureName,
+            labelWidth: labelWidth,
+            margin: '10 0 10 0'
+        },{
             xtype: 'rallycombobox',
             name: 'currencySign',
             store: currency_store,
