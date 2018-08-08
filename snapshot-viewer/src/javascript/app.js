@@ -4,7 +4,7 @@ Ext.define("snapshot-viewer", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
     items: [
-        {xtype:'container',itemId:'message_box',tpl:'Hello, <tpl>{_refObjectName}</tpl>'},
+        {xtype:'container',itemId:'selector_box', layout:{type:'hbox'}, height: 50},
         {xtype:'container',itemId:'display_box'}
     ],
 
@@ -47,9 +47,11 @@ Ext.define("snapshot-viewer", {
         Rally.ui.notify.Notifier.showError({message: msg });
     },
     _initializeApp: function(snapshotPrefRecords){
+        var me = this;
         this.logger.log('_initializeApp', snapshotPrefRecords);
 
-        this.removeAll();
+         this.down('#selector_box').removeAll();
+         this.down('#display_box').removeAll();
         if (!snapshotPrefRecords || snapshotPrefRecords.length === 0){
             //write something in the container.
             this.add({
@@ -71,7 +73,7 @@ Ext.define("snapshot-viewer", {
         this.logger.log('snapshotData', snapshotData);
         var tpl = '<div class="rally-checkbox-image"></div><div class="rally-checkbox-text">xyz</div>' ;
 
-        this.add({
+        this.down('#selector_box').add({
             xtype: 'container',
             layout: 'hbox',
             items: [{
@@ -85,14 +87,26 @@ Ext.define("snapshot-viewer", {
                 fieldLabel: 'Snapshot Name',
                 labelWidth: 100,
                 labelAlign: 'right',
-                multiSelect: true,
+                multiSelect: true, 
                 loadingHeight: 70,
                 minWidth: 70,
                 maxHeight: 300,
                 shadow: false,
                 displayField: '_refObjectName',
                 valueField: '_ref'
-            },{
+            },
+            {
+                xtype: 'rallyfieldpicker',
+                itemId: 'selectedFields',
+                fieldLabel: 'Pick Fields',
+                labelWidth: 100,
+                labelAlign: 'right',
+                alwaysExpanded: false,
+                stateful: true,
+                stateId: me.getContext().getScopedStateId('fieldpicker1'),
+                modelTypes: ['PortfolioItem']
+            },
+            {
                 xtype: 'rallybutton',
                 text: 'Go',
                 margin: 5,
@@ -165,7 +179,6 @@ Ext.define("snapshot-viewer", {
     _addGrid: function(snapNames, modelName, snaps){
         this.logger.log('_addGrid', snapNames, modelName);
 
-
         var objectIDs = [];
         Ext.Array.each(snaps, function(s){
             var val = CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotData(s);
@@ -179,10 +192,13 @@ Ext.define("snapshot-viewer", {
                 };
             });
 
-
+            var snapColNames = Ext.Array.map(snaps, function(s){
+                return CArABU.technicalservices.PortfolioCostApps.toolbox.getColumnNameFromSnapshot(s);
+            });
         CArABU.technicalservices.PortfolioSnapshotModelBuilder.build(modelName, "PortfolioSnapshot",snapNames).then({
             success: function(model){
-                this.add({
+
+                this.down('#display_box').add({
                     xtype:'rallygrid',
                     showRowActionsColumn: false,
                     enableEditing: false,
@@ -201,8 +217,43 @@ Ext.define("snapshot-viewer", {
                             scope: this
                         }
                     },
-                    columnCfgs: this._getColumnCfgs(snapNames)
+                    columnCfgs: this._getColumnCfgs(snapColNames)
                 });
+
+                // this.add({
+                //   xtype: 'rallygridboard',
+                //   context: this.getContext(),
+                //   modelNames: [modelName],
+                //   toggleState: 'grid',
+                //   plugins: [
+                //         {
+                //             ptype: 'rallygridboardfieldpicker',
+                //             headerPosition: 'left',
+                //             modelNames: [modelName]
+                //         }   
+                //   ],
+                //   gridConfig: {
+                //     showRowActionsColumn: false,
+                //     enableEditing: false,
+                //     itemId: 'snapInfo',
+                //     storeConfig: {
+                //         model: model,
+                //         fetch: ['FormattedID','Name'],
+                //         filters: Rally.data.wsapi.Filter.or(filters),
+                //         limit: 'Infinity',
+                //         listeners: {
+                //             load: function(store, records){
+                //                 Ext.Array.each(records, function(r){
+                //                     r.updateSnapValues(snaps);
+                //                 });
+                //             },
+                //             scope: this
+                //         }
+                //     },
+                //     columnCfgs: this._getColumnCfgs(snapNames)
+                //   },
+                //   height: this.getHeight()
+                // });
             },
             scope: this
         });
@@ -210,6 +261,10 @@ Ext.define("snapshot-viewer", {
     },
 
     _getColumnCfgs: function(snapNames){
+        var me = this;
+
+        var selectedFields = me.down('#selectedFields') && me.down('#selectedFields').getSubmitValue();
+
         var cols = [{
             dataIndex: 'FormattedID',
             _csvIgnoreRender: true
@@ -219,12 +274,16 @@ Ext.define("snapshot-viewer", {
         },{
             dataIndex: 'Project',
             flex: 1
-        }];
+        }].concat(selectedFields);
 
         Ext.Array.each(snapNames, function(n){
+            var di = n[0];
+            var text = n[0];
+            var html = (n[1] ? "From: " + Ext.Date.format(new Date(n[1]), "Y/m/d") : "") + (n[2] ? "<br/>To: " +Ext.Date.format(new Date(n[2]), "Y/m/d") : "")
             cols.push({
-                dataIndex: n,
-                text: n,
+                dataIndex: di,
+                text: text,
+                html: html,
                 editor: false,
                 renderer: function(v,r){
                     if (v > 0){
@@ -236,6 +295,7 @@ Ext.define("snapshot-viewer", {
         });
         return cols;
     },
+
     getOptions: function() {
         return [
             {

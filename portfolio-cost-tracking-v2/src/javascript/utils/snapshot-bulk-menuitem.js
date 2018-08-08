@@ -3,7 +3,7 @@ Ext.define('CArABU.technicalservices.SnapshotNameDialog',{
     extend: 'Rally.ui.dialog.Dialog',
 
     width: 300,
-    layout: 'fit',
+  //  layout: 'fit',
     closable: true,
     draggable: true,
 
@@ -33,7 +33,7 @@ Ext.define('CArABU.technicalservices.SnapshotNameDialog',{
                     cls: 'primary rly-small',
                     disabled: true,
                     handler: function() {
-                        this.fireEvent('takesnapshot', this.getName());
+                        this.fireEvent('takesnapshot', this.getData());
                         this.close();
                     },
                     itemId: 'doneButton',
@@ -53,15 +53,33 @@ Ext.define('CArABU.technicalservices.SnapshotNameDialog',{
          var pt = this.add({
             xtype: 'rallytextfield',
             itemId: 'txtName',
+            fieldLabel : 'Name',
             maxLength: 200
-        });
+         });
+
+         this.add({
+            xtype: 'rallydatefield',
+            itemId: 'dateFrom',
+            fieldLabel : 'From',
+            maxLength: 200
+         });
+
+         this.add({
+            xtype: 'rallydatefield',
+            itemId: 'dateTo',
+            fieldLabel : 'To',
+            maxLength: 200
+         });
+
         pt.on('change', function(txt, newValue){
             this.down('#doneButton').setDisabled(!newValue || newValue.length === 0);
         }, this);
 
+
+
     },
-    getName: function(){
-        return this.down('#txtName').getValue();
+    getData: function(){
+        return {'Name': this.down('#txtName').getValue(),'From' : this.down('#dateFrom').getValue(),'To' : this.down('#dateTo').getValue() };
     }
 
 
@@ -88,7 +106,7 @@ Ext.define('CArABU.technicalservices.SnapshotBulkRecordMenuItem', {
         text: 'Take Snapshot...',
 
         handler: function () {
-            this._getSnapshotName();
+            this._getSnapshotData();
         },
         predicate: function (records) {
             var type = null;
@@ -107,20 +125,20 @@ Ext.define('CArABU.technicalservices.SnapshotBulkRecordMenuItem', {
                 return type === recordType;
             });
         },
-        _getSnapshotName: function(){
+        _getSnapshotData: function(){
             Ext.create('CArABU.technicalservices.SnapshotNameDialog', {
                 autoShow: true,
                 draggable: true,
                 width: 300,
-                title: 'Enter Snapshot Name',
+                title: 'Enter Snapshot Details',
                 listeners: {
                     takesnapshot: this._saveSnapshot,
                     scope: this
                 }
             });
         },
-        _saveSnapshot: function(name) {
-            console.log('_saveSnapshot', name, this.records);
+        _saveSnapshot: function(data) {
+            console.log('_saveSnapshot', data, this.records);
 
             if (!this.records || this.records.length === 0){
                 return;
@@ -137,8 +155,8 @@ Ext.define('CArABU.technicalservices.SnapshotBulkRecordMenuItem', {
                 type: 'Preference',
                 success: function (model) {
                     var pref = Ext.create(model, {
-                        Name: CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotPreferenceName(name),
-                        Value: CArABU.technicalservices.PortfolioCostApps.toolbox.getEncodedSnapshotValueString(snapshotSettings, type)
+                        Name: CArABU.technicalservices.PortfolioCostApps.toolbox.getSnapshotPreferenceName(data.Name),
+                        Value: CArABU.technicalservices.PortfolioCostApps.toolbox.getEncodedSnapshotValueString(snapshotSettings, type, data.From, data.To)
                     });
 
                     pref.save({
@@ -146,10 +164,10 @@ Ext.define('CArABU.technicalservices.SnapshotBulkRecordMenuItem', {
                             if (success) {
                                 console.log('prefs', records);
                                 Ext.callback(this.onActionComplete, null, [this.records, []]);
-                                var msg = Ext.String.format("Snapshot '{0}' saved successfully.", name);
+                                var msg = Ext.String.format("Snapshot '{0}' saved successfully.", data.Name);
                                 Rally.ui.notify.Notifier.show({message: msg});
                             } else {
-                                Rally.ui.notify.Notifier.showError({message: "Failed to save snapshots for " + name});
+                                Rally.ui.notify.Notifier.showError({message: "Failed to save snapshots for " + data.Name});
                                 Ext.callback(this.onActionComplete, null, [[], this.records]);
                             }
                         },
