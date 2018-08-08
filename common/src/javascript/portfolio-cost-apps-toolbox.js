@@ -18,10 +18,22 @@ Ext.define('CArABU.technicalservices.PortfolioCostApps.toolbox',{
         var obj = Ext.JSON.decode(snap.get('Value'));
         return obj.data || {};
     },
-    getEncodedSnapshotValueString: function(oidValueHash, type){
+    getColumnNameFromSnapshot: function(snap){
+        var name = snap.get('Name');
+        var obj = Ext.JSON.decode(snap.get('Value'));
+        name = name.replace(CArABU.technicalservices.PortfolioCostApps.toolbox.snapshotPrefPrefix,'');
+        var friendly_name = [name];
+        friendly_name.push(obj.from);
+        friendly_name.push(obj.to);
+
+        return friendly_name;
+    },    
+    getEncodedSnapshotValueString: function(oidValueHash, type, from, to){
         var obj = {
             type: type,
-            data: oidValueHash
+            data: oidValueHash,
+            from: from,
+            to: to
         };
         return Ext.JSON.encode(obj);
     }
